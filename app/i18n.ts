@@ -7,9 +7,10 @@ export const APP_NAME = 'Костёр'
 export interface Messages {
   deckTypes: Record<DeckType, string>
   adult: string
-  questions: string
   decks: string
   deckNotFound: string
+  next: string
+  finished: string
 }
 
 export const messages: Record<Lang, Messages> = {
@@ -20,9 +21,10 @@ export const messages: Record<Lang, Messages> = {
       'never-have-i': 'Я никогда не…',
     },
     adult: 'Для взрослых',
-    questions: 'Вопросов',
     decks: 'Колоды',
     deckNotFound: 'Колода не найдена',
+    next: 'Дальше',
+    finished: 'Вопросы закончились',
   },
   en: {
     deckTypes: {
@@ -31,8 +33,9 @@ export const messages: Record<Lang, Messages> = {
       'never-have-i': 'Never Have I Ever',
     },
     adult: 'Adults only',
-    questions: 'Questions',
     decks: 'Decks',
     deckNotFound: 'Deck not found',
+    next: 'Next',
+    finished: 'No more questions',
   },
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useProgress } from '~/composables/useProgress'
 import { decksByLang } from '~/decks'
 import { APP_NAME, messages } from '~/i18n'
 import { DECK_TYPES, type Lang } from '~/types'
@@ -6,6 +7,8 @@ import { DECK_TYPES, type Lang } from '~/types'
 // Язык пока захардкожен; переключатель появится вместе с настройками (тикет 06).
 const lang: Lang = 'ru'
 const t = messages[lang]
+
+const { shownCount } = useProgress()
 
 // Группы по типу игры в фиксированном порядке; колоды 18+ — отдельной последней группой.
 const own = decksByLang(lang)
@@ -31,6 +34,7 @@ const groups = [
             <span class="deck-emoji" aria-hidden="true">{{ deck.emoji }}</span>
             <span class="deck-title">{{ deck.title }}</span>
             <span v-if="deck.adult" class="deck-badge" role="img" :aria-label="t.adult">🔞</span>
+            <span class="deck-count">{{ shownCount(deck.id) }} / {{ deck.questions.length }}</span>
           </NuxtLink>
         </li>
       </ul>
@@ -105,5 +109,11 @@ const groups = [
 .deck-badge {
   font-size: 22px;
   line-height: 1;
+}
+
+.deck-count {
+  color: var(--muted);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
 }
 </style>
