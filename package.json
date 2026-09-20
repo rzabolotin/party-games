@@ -4,10 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "nuxt dev",
-    "build": "npm run icons && nuxt generate",
+    "build": "npm run check-content && npm run icons && nuxt generate",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "icons": "node scripts/gen-icons.mjs",
+    "check-content": "node scripts/check-content.mjs",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
