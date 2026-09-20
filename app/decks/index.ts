@@ -2,12 +2,20 @@ import type { Deck, Lang } from '~/types'
 // Расширения .ts в импортах обязательны: этот индекс загружает не только Vite,
 // но и Node-скрипт проверки контента (scripts/check-content.mjs).
 import ruWarmUp from './ru/warm-up.ts'
+import ruHomeHabits from './ru/home-habits.ts'
+import ruTravel from './ru/travel.ts'
+import ruChildhood from './ru/childhood.ts'
+import ruFood from './ru/food.ts'
 import enWarmUp from './en/warm-up.ts'
 
 /** Все колоды. Порядок массива — порядок в списке; 18+ в каждом языке последняя. */
 export const decks: Deck[] = [
   // ru
   ruWarmUp,
+  ruHomeHabits,
+  ruTravel,
+  ruChildhood,
+  ruFood,
   // en
   enWarmUp,
 ]
