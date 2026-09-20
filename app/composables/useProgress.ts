@@ -36,6 +36,11 @@ export function useProgress() {
       delete progress.value[deckId]
       save(progress.value)
     },
+    /** «Сбросить весь прогресс» в настройках: все колоды всех языков — с нуля. */
+    clear() {
+      progress.value = {}
+      save(progress.value)
+    },
   }
 }
 

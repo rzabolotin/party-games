@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { useDeckProgress } from '~/composables/useDeckProgress'
+import { useMessages } from '~/composables/useMessages'
 import { getDeck } from '~/decks'
-import { messages } from '~/i18n'
-import type { Lang } from '~/types'
 
-// Язык пока захардкожен; переключатель появится вместе с настройками (тикет 06).
-const lang: Lang = 'ru'
-const t = messages[lang]
+const t = useMessages()
 
 const route = useRoute()
 const deckId = String(route.params.deckId)
@@ -190,7 +187,7 @@ function onPointerCancel() {
   text-align: center;
 }
 
-/* Кегль: базовое значение по длине текста, умноженное на масштаб из настроек  */
+/* Кегль: базовое значение по длине текста, умноженное на масштаб из настроек (--font-scale на <html>). */
 .question {
   margin: 0;
   font-size: calc(var(--question-size) * var(--font-scale));

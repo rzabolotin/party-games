@@ -1,30 +1,35 @@
 <script setup lang="ts">
+import { useMessages } from '~/composables/useMessages'
 import { useProgress } from '~/composables/useProgress'
+import { useSettings } from '~/composables/useSettings'
 import { decksByLang } from '~/decks'
-import { APP_NAME, messages } from '~/i18n'
-import { DECK_TYPES, type Lang } from '~/types'
+import { APP_NAME } from '~/i18n'
+import { DECK_TYPES } from '~/types'
 
-// Язык пока захардкожен; переключатель появится вместе с настройками (тикет 06).
-const lang: Lang = 'ru'
-const t = messages[lang]
-
+const settings = useSettings()
+const t = useMessages()
 const { shownCount } = useProgress()
 
-// Группы по типу игры в фиксированном порядке; колоды 18+ — отдельной последней группой.
-const own = decksByLang(lang)
-const groups = [
-  ...DECK_TYPES.map((type) => ({
-    key: type,
-    title: t.deckTypes[type],
-    decks: own.filter((deck) => deck.type === type && !deck.adult),
-  })),
-  { key: 'adult', title: t.adult, decks: own.filter((deck) => deck.adult) },
-].filter((group) => group.decks.length > 0)
+// Колоды текущего языка, группы по типу игры в фиксированном порядке; 18+ — отдельной последней группой.
+const groups = computed(() => {
+  const own = decksByLang(settings.lang)
+  return [
+    ...DECK_TYPES.map((type) => ({
+      key: type,
+      title: t.value.deckTypes[type],
+      decks: own.filter((deck) => deck.type === type && !deck.adult),
+    })),
+    { key: 'adult', title: t.value.adult, decks: own.filter((deck) => deck.adult) },
+  ].filter((group) => group.decks.length > 0)
+})
 </script>
 
 <template>
   <main class="screen">
-    <h1 class="title">{{ APP_NAME }}</h1>
+    <header class="header">
+      <h1 class="title">{{ APP_NAME }}</h1>
+      <NuxtLink to="/settings" class="gear" :aria-label="t.settings" :title="t.settings">⚙️</NuxtLink>
+    </header>
 
     <section v-for="group in groups" :key="group.key" class="group">
       <h2 class="group-title">{{ group.title }}</h2>
@@ -51,10 +56,35 @@ const groups = [
     calc(env(safe-area-inset-bottom, 0px) + 24px) calc(env(safe-area-inset-left, 0px) + 16px);
 }
 
-.title {
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 24px;
+}
+
+.title {
+  margin: 0;
   font-size: 36px;
   font-weight: 700;
+}
+
+/* Шестерёнка: цель не меньше 44×44, сама иконка чуть меньше заголовка. */
+.gear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  font-size: 28px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.gear:active {
+  background: var(--surface-active);
 }
 
 .group + .group {
