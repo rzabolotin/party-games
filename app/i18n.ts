@@ -11,6 +11,8 @@ export interface Messages {
   deckNotFound: string
   next: string
   finished: string
+  restart: string
+  toDecks: string
 }
 
 export const messages: Record<Lang, Messages> = {
@@ -25,6 +27,8 @@ export const messages: Record<Lang, Messages> = {
     deckNotFound: 'Колода не найдена',
     next: 'Дальше',
     finished: 'Вопросы закончились',
+    restart: 'Заново',
+    toDecks: 'К колодам',
   },
   en: {
     deckTypes: {
@@ -37,5 +41,7 @@ export const messages: Record<Lang, Messages> = {
     deckNotFound: 'Deck not found',
     next: 'Next',
     finished: 'No more questions',
+    restart: 'Restart',
+    toDecks: 'To decks',
   },
 }

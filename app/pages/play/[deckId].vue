@@ -11,7 +11,7 @@ const t = messages[lang]
 const route = useRoute()
 const deckId = String(route.params.deckId)
 const deck = getDeck(deckId)
-const { current, shownCount, total, finished, next } = useDeckProgress(deckId)
+const { current, shownCount, total, finished, next, reset } = useDeckProgress(deckId)
 
 /** Ключ карточки для <Transition>: меняется на каждом «Дальше», включая переход к финальной. */
 const cardKey = computed(() => (finished.value ? 'finished' : `${shownCount.value}`))
@@ -36,13 +36,21 @@ function advance(to: 'left' | 'right' = 'left') {
   next()
 }
 
+/** «Заново» на финальной карточке: прогресс колоды стирается, первый вопрос нового круга въезжает как обычный. */
+function restart() {
+  if (!deck || !finished.value || animating.value) return
+  direction.value = 'left'
+  animating.value = true
+  reset()
+}
+
 const SWIPE_THRESHOLD = 40
 const TAP_THRESHOLD = 10
 
 let start: { id: number; x: number; y: number } | null = null
 
 function onPointerDown(event: PointerEvent) {
-  // Кнопки внутри карточки (финальная карточка, тикет 05) листать не должны.
+  // Кнопки финальной карточки листать не должны.
   if (!event.isPrimary || (event.target as Element).closest('button, a')) return
   start = { id: event.pointerId, x: event.clientX, y: event.clientY }
   // Захват — pointerup придёт на карточку, даже если палец отпустили над панелью.
@@ -94,8 +102,11 @@ function onPointerCancel() {
         @enter-cancelled="animating = false"
       >
         <div :key="cardKey" class="face">
-          <!-- Финальная карточка с «Заново» и «К колодам» — тикет 05; пока только заголовок. -->
-          <p v-if="finished" class="question size-l">{{ t.finished }}</p>
+          <div v-if="finished" class="end">
+            <p class="question size-l">{{ t.finished }}</p>
+            <button type="button" class="action primary" @click="restart">{{ t.restart }}</button>
+            <NuxtLink to="/" class="action secondary">{{ t.toDecks }}</NuxtLink>
+          </div>
           <p v-else class="question" :class="sizeClass">{{ current }}</p>
         </div>
       </Transition>
@@ -179,7 +190,7 @@ function onPointerCancel() {
   text-align: center;
 }
 
-/* Кегль: базовое значение по длине текста, умноженное на масштаб из настроек. */
+/* Кегль: базовое значение по длине текста, умноженное на масштаб из настроек  */
 .question {
   margin: 0;
   font-size: calc(var(--question-size) * var(--font-scale));
@@ -231,28 +242,64 @@ function onPointerCancel() {
   }
 }
 
+/* Финальная карточка: заголовок и две кнопки столбиком, во всю ширину карточки. */
+.end {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.end .question {
+  margin-bottom: 16px;
+}
+
 .bottom {
   display: flex;
   flex: none;
   min-height: 60px;
 }
 
-.next {
-  flex: 1;
+.next,
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 60px;
   padding: 12px 20px;
   border: 0;
   border-radius: 16px;
-  background: var(--accent);
-  color: var(--bg);
   font: inherit;
   font-size: 22px;
   font-weight: 700;
+  text-decoration: none;
   cursor: pointer;
   touch-action: manipulation;
 }
 
-.next:active {
+.next,
+.primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.secondary {
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.next {
+  flex: 1;
+}
+
+.next:active,
+.primary:active {
   filter: brightness(0.85);
+}
+
+.secondary:active {
+  background: var(--surface-active);
 }
 </style>
