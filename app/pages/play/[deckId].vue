@@ -2,6 +2,7 @@
 import { useDeckProgress } from '~/composables/useDeckProgress'
 import { useMessages } from '~/composables/useMessages'
 import { useReader } from '~/composables/useReader'
+import { useWakeLock } from '~/composables/useWakeLock'
 import { getDeck } from '~/decks'
 
 const t = useMessages()
@@ -11,6 +12,8 @@ const deckId = String(route.params.deckId)
 const deck = getDeck(deckId)
 const { current, shownCount, total, finished, next, reset } = useDeckProgress(deckId)
 const reader = useReader()
+// Пока открыта карточка, экран не гаснет; в списке колод и настройках блокировки нет.
+useWakeLock()
 
 // --- Стейт-машина: question → reader → question; reader пропускается, если показ читающего выключен. ---
 
