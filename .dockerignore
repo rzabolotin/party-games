@@ -1,0 +1,14 @@
+node_modules
+.nuxt
+.output
+.data
+.cache
+.git
+.idea
+.vscode
+drafts
+Dockerfile
+docker-compose.yml
+*.log
+.env
+.env.*

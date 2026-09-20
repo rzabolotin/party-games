@@ -1,0 +1,26 @@
+services:
+  # docker compose up dev — dev-сервер с hot-reload на http://localhost:3000 (и по IP в локальной сети)
+  dev:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    environment:
+      NUXT_APP_BASE_URL: ${NUXT_APP_BASE_URL:-/}
+
+  # docker compose up web — прод-сборка, nginx на http://localhost:8080
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NUXT_APP_BASE_URL: ${NUXT_APP_BASE_URL:-/}
+    ports:
+      - "8080:8080"
+
+volumes:
+  node_modules:

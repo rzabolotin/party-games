@@ -1,0 +1,18 @@
+{
+  "name": "koster",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "npm run icons && nuxt generate",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "icons": "node scripts/gen-icons.mjs",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@vite-pwa/nuxt": "^1.1.1",
+    "nuxt": "^4.5.2",
+    "vue": "^3.5.43"
+  }
+}
