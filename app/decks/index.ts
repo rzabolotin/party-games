@@ -10,7 +10,6 @@ import ruFunnyDilemmas from './ru/funny-dilemmas.ts'
 import ruWhatIf from './ru/what-if.ts'
 import ruPhilosophy from './ru/philosophy.ts'
 import ruUniversal from './ru/universal.ts'
-import ruAdult from './ru/adult.ts'
 import enWarmUp from './en/warm-up.ts'
 
 /** Все колоды. Порядок массива — порядок в списке; 18+ в каждом языке последняя. */
@@ -25,7 +24,6 @@ export const decks: Deck[] = [
   ruWhatIf,
   ruPhilosophy,
   ruUniversal,
-  ruAdult,
   // en
   enWarmUp,
 ]
