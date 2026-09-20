@@ -19,6 +19,13 @@ export interface Messages {
   fontSize: string
   fontSizes: Record<'1' | '1.2' | '1.4', string>
   fontSample: string
+  players: string
+  playerName: string
+  addPlayer: string
+  removePlayer: string
+  showReader: string
+  showReaderHint: string
+  nextReader: string
   resetProgress: string
   resetConfirm: string
 }
@@ -49,6 +56,13 @@ export const messages: Record<Lang, Messages> = {
     fontSize: 'Размер шрифта',
     fontSizes: { '1': 'Обычный', '1.2': 'Крупный', '1.4': 'Огромный' },
     fontSample: 'Кто из нас скорее всего заснёт первым у костра?',
+    players: 'Игроки',
+    playerName: 'Имя',
+    addPlayer: 'Добавить',
+    removePlayer: 'Удалить',
+    showReader: 'Показывать, кто читает',
+    showReaderHint: 'Добавьте имена игроков, чтобы включить.',
+    nextReader: 'Следующий:',
     resetProgress: 'Сбросить весь прогресс',
     resetConfirm: 'Сбросить прогресс всех колод? Отменить будет нельзя.',
   },
@@ -71,6 +85,13 @@ export const messages: Record<Lang, Messages> = {
     fontSize: 'Font size',
     fontSizes: { '1': 'Normal', '1.2': 'Large', '1.4': 'Huge' },
     fontSample: 'Who is most likely to fall asleep first by the fire?',
+    players: 'Players',
+    playerName: 'Name',
+    addPlayer: 'Add',
+    removePlayer: 'Remove',
+    showReader: 'Show who reads next',
+    showReaderHint: 'Add player names to enable.',
+    nextReader: 'Next up:',
     resetProgress: 'Reset all progress',
     resetConfirm: 'Reset progress of all decks? This cannot be undone.',
   },

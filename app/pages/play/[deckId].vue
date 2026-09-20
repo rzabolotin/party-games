@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useDeckProgress } from '~/composables/useDeckProgress'
 import { useMessages } from '~/composables/useMessages'
+import { useReader } from '~/composables/useReader'
 import { getDeck } from '~/decks'
 
 const t = useMessages()
@@ -9,9 +10,19 @@ const route = useRoute()
 const deckId = String(route.params.deckId)
 const deck = getDeck(deckId)
 const { current, shownCount, total, finished, next, reset } = useDeckProgress(deckId)
+const reader = useReader()
 
-/** Ключ карточки для <Transition>: меняется на каждом «Дальше», включая переход к финальной. */
-const cardKey = computed(() => (finished.value ? 'finished' : `${shownCount.value}`))
+// --- Стейт-машина: question → reader → question; reader пропускается, если показ читающего выключен. ---
+
+/** Что на карточке: вопрос или «Следующий: <имя>». Финал — отдельно, через `finished`. */
+const stage = ref<'question' | 'reader'>('question')
+/** Имя на карточке читающего; выбирается заново при каждом входе в `reader`. */
+const readerName = ref<string | null>(null)
+
+/** Ключ карточки для <Transition>: меняется на каждом «Дальше», включая карточку читающего и финальную. */
+const cardKey = computed(() =>
+  finished.value ? 'finished' : stage.value === 'reader' ? `reader-${shownCount.value}` : `${shownCount.value}`,
+)
 
 /** Кегль по длине текста: короткие вопросы крупнее, чтобы экран использовался целиком. */
 const sizeClass = computed(() => {
@@ -30,7 +41,17 @@ function advance(to: 'left' | 'right' = 'left') {
   if (!deck || finished.value || animating.value) return
   direction.value = to
   animating.value = true
-  next()
+  if (stage.value === 'reader') {
+    stage.value = 'question'
+    next()
+  } else if (reader.enabled.value && shownCount.value < total) {
+    // Есть кому и что читать — сначала карточка читающего; счётчик пока не меняется.
+    readerName.value = reader.next()
+    stage.value = 'reader'
+  } else {
+    // Непоказанных не осталось — финальная карточка сразу, без карточки читающего.
+    next()
+  }
 }
 
 /** «Заново» на финальной карточке: прогресс колоды стирается, первый вопрос нового круга въезжает как обычный. */
@@ -103,6 +124,10 @@ function onPointerCancel() {
             <p class="question size-l">{{ t.finished }}</p>
             <button type="button" class="action primary" @click="restart">{{ t.restart }}</button>
             <NuxtLink to="/" class="action secondary">{{ t.toDecks }}</NuxtLink>
+          </div>
+          <div v-else-if="stage === 'reader'" class="reader">
+            <p class="reader-label">{{ t.nextReader }}</p>
+            <p class="question size-l reader-name">{{ readerName }}</p>
           </div>
           <p v-else class="question" :class="sizeClass">{{ current }}</p>
         </div>
@@ -237,6 +262,22 @@ function onPointerCancel() {
   .slide-right-leave-active {
     transition: none;
   }
+}
+
+/* Карточка читающего: подпись помельче, имя — как короткий вопрос, акцентом. */
+.reader {
+  width: 100%;
+}
+
+.reader-label {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: calc(22px * var(--font-scale));
+  font-weight: 600;
+}
+
+.reader-name {
+  color: var(--accent);
 }
 
 /* Финальная карточка: заголовок и две кнопки столбиком, во всю ширину карточки. */

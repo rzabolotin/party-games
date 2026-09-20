@@ -27,6 +27,13 @@ export function useSettings(): Settings {
   if (!state) {
     state = reactive(load())
     watch(state, save, { deep: true })
+    // Без имён показывать некого: тумблер в настройках недоступен, а здесь он ещё и выключается.
+    watch(
+      () => state!.players.length,
+      (count) => {
+        if (count === 0) state!.showReader = false
+      },
+    )
   }
   return state
 }
@@ -55,7 +62,7 @@ function load(): Settings {
   if (isLang(lang)) settings.lang = lang
   if (isFontScale(fontScale)) settings.fontScale = fontScale
   if (Array.isArray(players)) settings.players = players.filter((name): name is string => typeof name === 'string')
-  if (typeof showReader === 'boolean') settings.showReader = showReader
+  if (typeof showReader === 'boolean') settings.showReader = showReader && settings.players.length > 0
   return settings
 }
 
