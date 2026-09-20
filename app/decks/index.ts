@@ -11,6 +11,10 @@ import ruWhatIf from './ru/what-if.ts'
 import ruPhilosophy from './ru/philosophy.ts'
 import ruUniversal from './ru/universal.ts'
 import enWarmUp from './en/warm-up.ts'
+import enHomeHabits from './en/home-habits.ts'
+import enTravel from './en/travel.ts'
+import enChildhood from './en/childhood.ts'
+import enFood from './en/food.ts'
 
 /** Все колоды. Порядок массива — порядок в списке; 18+ в каждом языке последняя. */
 export const decks: Deck[] = [
@@ -26,6 +30,10 @@ export const decks: Deck[] = [
   ruUniversal,
   // en
   enWarmUp,
+  enHomeHabits,
+  enTravel,
+  enChildhood,
+  enFood,
 ]
 
 export function decksByLang(lang: Lang): Deck[] {
