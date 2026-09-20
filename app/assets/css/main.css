@@ -5,6 +5,8 @@
   --accent: #ff8a2b;
   --surface: #231e1a;
   --surface-active: #302823;
+  /* Масштаб шрифта вопроса; пока константа, переключатель — в настройках (тикет 06). */
+  --font-scale: 1.2;
   color-scheme: dark;
 }
 
