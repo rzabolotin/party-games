@@ -15,6 +15,10 @@ import enHomeHabits from './en/home-habits.ts'
 import enTravel from './en/travel.ts'
 import enChildhood from './en/childhood.ts'
 import enFood from './en/food.ts'
+import enSillyDilemmas from './en/silly-dilemmas.ts'
+import enWhatIf from './en/what-if.ts'
+import enDeepTalk from './en/deep-talk.ts'
+import enNeverHaveI from './en/never-have-i.ts'
 
 /** Все колоды. Порядок массива — порядок в списке; 18+ в каждом языке последняя. */
 export const decks: Deck[] = [
@@ -34,6 +38,10 @@ export const decks: Deck[] = [
   enTravel,
   enChildhood,
   enFood,
+  enSillyDilemmas,
+  enWhatIf,
+  enDeepTalk,
+  enNeverHaveI,
 ]
 
 export function decksByLang(lang: Lang): Deck[] {
