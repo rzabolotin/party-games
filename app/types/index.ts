@@ -29,8 +29,8 @@ export type RoleId = (typeof ROLE_IDS)[number]
 export type CountedRoleId = Exclude<RoleId, 'civilian'>
 
 export interface MafiaRole {
+  /** Он же имя рисунка в `MafiaIcon`. */
   id: RoleId
-  emoji: string
   faction: Faction
   /** Мирный — остаток состава, у него нет счётчика на экране состава. */
   counted: boolean

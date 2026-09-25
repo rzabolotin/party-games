@@ -113,7 +113,7 @@ const nightOrder = computed(() =>
       <div class="body">
         <section class="group">
           <div class="row">
-            <span class="row-emoji" aria-hidden="true">👥</span>
+            <MafiaIcon name="players" class="row-icon" />
             <span class="row-title">{{ t.mafiaPlayersCount }}</span>
             <span class="stepper">
               <button
@@ -150,7 +150,7 @@ const nightOrder = computed(() =>
                   :aria-expanded="expanded === role.id"
                   @click="toggleRole(role.id)"
                 >
-                  <span class="row-emoji" aria-hidden="true">{{ role.emoji }}</span>
+                  <MafiaIcon :name="role.id" class="row-icon" />
                   <span class="row-title">{{ role.title[settings.lang] }}</span>
                   <span class="chevron" :class="{ open: expanded === role.id }" aria-hidden="true">›</span>
                 </button>
@@ -211,13 +211,13 @@ const nightOrder = computed(() =>
         >
           <span class="card-inner">
             <span class="card-face card-back">
-              <span class="moon" aria-hidden="true">🌙</span>
+              <MafiaIcon name="moon" class="moon" />
               <span class="back-hint">{{ t.mafiaReveal }}</span>
             </span>
             <span v-if="currentRole" class="card-face card-front" :class="`faction-${currentRole.faction}`">
-              <span class="corner corner-start" aria-hidden="true">{{ currentRole.emoji }}</span>
-              <span class="corner corner-end" aria-hidden="true">{{ currentRole.emoji }}</span>
-              <span class="card-emoji" aria-hidden="true">{{ currentRole.emoji }}</span>
+              <MafiaIcon :name="currentRole.id" class="corner corner-start" />
+              <MafiaIcon :name="currentRole.id" class="corner corner-end" />
+              <MafiaIcon :name="currentRole.id" class="card-icon" />
               <span class="card-name">{{ currentRole.title[settings.lang] }}</span>
               <span class="card-rule" aria-hidden="true" />
               <span class="card-tagline">{{ currentRole.tagline[settings.lang] }}</span>
@@ -247,7 +247,7 @@ const nightOrder = computed(() =>
           <ul class="roles">
             <li v-for="item in summary" :key="item.role.id" class="role" :class="`faction-${item.role.faction}`">
               <div class="row">
-                <span class="row-emoji" aria-hidden="true">{{ item.role.emoji }}</span>
+                <MafiaIcon :name="item.role.id" class="row-icon" />
                 <span class="row-title">{{ item.role.title[settings.lang] }}</span>
                 <span class="value rest">{{ item.count }}</span>
               </div>
@@ -260,7 +260,7 @@ const nightOrder = computed(() =>
           <p class="night-intro">{{ t.mafiaNightIntro }}…</p>
           <ol class="night">
             <li v-for="role in nightOrder" :key="role.id" class="night-step" :class="`faction-${role.faction}`">
-              <span class="row-emoji" aria-hidden="true">{{ role.emoji }}</span>
+              <MafiaIcon :name="role.id" class="row-icon" />
               <span class="row-title">{{ role.title[settings.lang] }}</span>
             </li>
           </ol>
@@ -409,12 +409,12 @@ const nightOrder = computed(() =>
   touch-action: manipulation;
 }
 
-.row-emoji {
+/* Рисунок роли в строке: размер задаётся кеглем, цвет — стороной. */
+.row-icon {
   flex: none;
-  width: 32px;
+  margin: 0 4px;
   font-size: 24px;
-  line-height: 1;
-  text-align: center;
+  color: var(--faction, var(--muted));
 }
 
 .row-title {
@@ -589,8 +589,8 @@ const nightOrder = computed(() =>
 }
 
 .moon {
+  color: var(--muted);
   font-size: clamp(56px, 14vh, 96px);
-  line-height: 1;
 }
 
 .back-hint {
@@ -608,11 +608,12 @@ const nightOrder = computed(() =>
   transform: rotateY(180deg);
 }
 
+/* Уголки карты, как масть на игральной: тот же рисунок мелко и вполсилы. */
 .corner {
   position: absolute;
+  color: var(--faction);
   font-size: 22px;
-  line-height: 1;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .corner-start {
@@ -626,9 +627,9 @@ const nightOrder = computed(() =>
   transform: rotate(180deg);
 }
 
-.card-emoji {
+.card-icon {
+  color: var(--faction);
   font-size: clamp(48px, 11vh, 84px);
-  line-height: 1;
 }
 
 .card-name {

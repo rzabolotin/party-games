@@ -10,7 +10,6 @@ import type { CountedRoleId, MafiaRole, RoleId } from '~/types'
 export const roles: MafiaRole[] = [
   {
     id: 'mafia',
-    emoji: '🎭',
     faction: 'mafia',
     counted: true,
     unique: false,
@@ -27,7 +26,6 @@ export const roles: MafiaRole[] = [
   },
   {
     id: 'don',
-    emoji: '🎩',
     faction: 'mafia',
     counted: true,
     unique: true,
@@ -45,7 +43,6 @@ export const roles: MafiaRole[] = [
   },
   {
     id: 'detective',
-    emoji: '🕵️',
     faction: 'town',
     counted: true,
     unique: true,
@@ -62,7 +59,6 @@ export const roles: MafiaRole[] = [
   },
   {
     id: 'doctor',
-    emoji: '🩺',
     faction: 'town',
     counted: true,
     unique: true,
@@ -79,7 +75,6 @@ export const roles: MafiaRole[] = [
   },
   {
     id: 'maniac',
-    emoji: '🃏',
     faction: 'solo',
     counted: true,
     unique: true,
@@ -96,7 +91,6 @@ export const roles: MafiaRole[] = [
   },
   {
     id: 'civilian',
-    emoji: '🙂',
     faction: 'town',
     counted: false,
     unique: false,

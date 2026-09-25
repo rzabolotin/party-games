@@ -103,7 +103,6 @@ for (const role of roles) {
   else roleIds.add(role.id)
 
   if (!FACTIONS.includes(role.faction)) fail(where, `неизвестная фракция «${role.faction}»`)
-  if (typeof role.emoji !== 'string' || !role.emoji.trim()) fail(where, 'пустой emoji')
   if (typeof role.counted !== 'boolean') fail(where, 'counted — не boolean')
   if (typeof role.unique !== 'boolean') fail(where, 'unique — не boolean')
   if (role.requiresMafia && role.id !== 'don') fail(where, 'requiresMafia бывает только у Дона')
