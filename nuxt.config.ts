@@ -1,3 +1,5 @@
+import { decks } from './app/decks/index.ts'
+
 const APP_NAME = 'Костёр'
 const THEME_COLOR = '#14110f'
 const baseURL = process.env.NUXT_APP_BASE_URL || '/'
@@ -8,6 +10,15 @@ export default defineNuxtConfig({
   modules: ['@vite-pwa/nuxt'],
   devtools: { enabled: false },
   css: ['~/assets/css/main.css'],
+
+  // Статика без SSR: у каждой колоды свой URL, и хостинг должен отдавать по нему
+  // оболочку с кодом 200, а не 404.html. Краулер эти ссылки не видит (ssr: false),
+  // поэтому перечисляем маршруты сами.
+  nitro: {
+    prerender: {
+      routes: decks.map((deck) => `/play/${deck.id}`),
+    },
+  },
 
   app: {
     baseURL,

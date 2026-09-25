@@ -41,18 +41,32 @@ docker compose up --build web  # прод-сборка, nginx → http://localho
 
 ## Деплой на Cloudflare Pages
 
-Без wrangler и токенов — Cloudflare сам собирает проект из GitHub-репозитория.
+Проект в Cloudflare: **koster**, боевой адрес — https://koster-779.pages.dev (`koster.pages.dev` был занят, Cloudflare выдал суффикс). Продакшн-ветка `master`.
+
+### Ручной деплой (как сейчас)
+
+```sh
+npx wrangler login                 # один раз: OAuth через браузер
+npm run build
+npx wrangler pages deploy .output/public --project-name koster --branch master
+```
+
+`--branch master` = деплой в продакшн; любое другое значение даёт preview-адрес. Каждый деплой печатает ещё и уникальную ссылку вида `https://<hash>.koster-779.pages.dev` — это снимок именно этой сборки, удобно сравнивать.
+
+Если проект понадобится пересоздать: `npx wrangler pages project create <name> --production-branch master --force`. Без `--force` wrangler пытается делегировать команду в Workers и падает; на остальных командах флаг не нужен.
+
+### Автодеплой из GitHub (когда понадобится)
 
 1. Запушить репозиторий на GitHub.
-2. В дашборде Cloudflare: **Workers & Pages → Create → Pages → Connect to Git**, выбрать репозиторий.
-3. Настройки сборки:
-   - Framework preset: **None**
-   - Build command: `npm run build`
-   - Build output directory: `.output/public`
-   - Переменные окружения не нужны. Версию Node Cloudflare берёт из `.node-version` (22).
-4. **Save and Deploy**. Приложение откроется по адресу вида `https://<project>.pages.dev` — это HTTPS, service worker и Wake Lock работают.
+2. Cloudflare: **Workers & Pages → koster → Settings → Git** (или новый проект через **Connect to Git**).
+3. Framework preset **None**, build command `npm run build`, output directory `.output/public`. Переменные не нужны, версию Node Cloudflare берёт из `.node-version` (22).
 
-Дальше каждый пуш в основную ветку деплоится автоматически; для остальных веток Cloudflare делает preview-адреса.
+Дальше каждый пуш в `master` деплоится сам, остальные ветки получают preview-адреса.
+
+### Что нужно именно для Pages
+
+- `public/_headers` — то же, что `nginx.conf` делает локально (`nginx.conf` Cloudflare не читает): `no-cache` для `index.html`, `sw.js` и манифеста, вечный кэш для `/_nuxt/*`.
+- Оболочка для каждой колоды пререндерится в файл (`nitro.prerender.routes` в `nuxt.config.ts`), иначе `/play/<deckId>` отдавался бы как 404. Splat-rewrite через `_redirects` на Pages не работает — не пытаться.
 
 Приложение раздаётся с корня (`base = /`). Для хостинга в подкаталоге собрать с `NUXT_APP_BASE_URL=/subdir/` (переменная поддерживается и в `docker compose`).
 
