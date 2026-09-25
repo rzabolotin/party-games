@@ -6,6 +6,10 @@
   --surface: #231e1a;
   --surface-active: #302823;
   --danger: #e5484d;
+  /* Стороны в «Мафии»: цвет рамки карты и полосы у строки роли. */
+  --faction-mafia: #e5565b;
+  --faction-town: #4d9bf0;
+  --faction-solo: #a06ce8;
   /* Масштаб шрифта вопроса; значение из настроек ставится на <html> в app.vue, здесь — дефолт до их загрузки. */
   --font-scale: 1.2;
   color-scheme: dark;

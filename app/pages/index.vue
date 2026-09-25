@@ -44,6 +44,20 @@ const groups = computed(() => {
         </li>
       </ul>
     </section>
+
+    <!-- «Другие игры» — не колоды, а режимы; всегда последней группой, ниже всех колод. -->
+    <section class="group">
+      <h2 class="group-title">{{ t.otherGames }}</h2>
+      <ul class="decks">
+        <li>
+          <NuxtLink to="/mafia" class="deck">
+            <span class="deck-emoji" aria-hidden="true">🎭</span>
+            <span class="deck-title">{{ t.mafia }}</span>
+            <span class="deck-count">{{ t.mafiaSubtitle }}</span>
+          </NuxtLink>
+        </li>
+      </ul>
+    </section>
   </main>
 </template>
 

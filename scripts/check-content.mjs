@@ -5,10 +5,17 @@ import { existsSync, readdirSync } from 'node:fs'
 
 const MIN_QUESTIONS = 40
 const MAX_LENGTH = 90
+/** Лимиты текстов ролей: карта «Мафии» должна помещаться в экран без скролла. */
+const MAX_ROLE_TITLE = 24
+const MAX_ROLE_TAGLINE = 90
+const MAX_ROLE_DESCRIPTION = 180
 
 const DECKS_DIR = new URL('../app/decks/', import.meta.url)
 const { decks } = await import(new URL('index.ts', DECKS_DIR).href)
-const { LANGS, DECK_TYPES } = await import(new URL('../app/types/index.ts', import.meta.url).href)
+const { LANGS, DECK_TYPES, FACTIONS, ROLE_IDS } = await import(
+  new URL('../app/types/index.ts', import.meta.url).href
+)
+const { roles } = await import(new URL('../app/mafia/roles.ts', import.meta.url).href)
 
 const problems = []
 const fail = (where, what) => problems.push(`${where}: ${what}`)
@@ -79,6 +86,48 @@ for (const lang of LANGS) {
   }
 }
 
+// --- Роли «Мафии»: набор фиксирован, тексты — на обоих языках и в размер карты ---
+
+if (roles.length !== ROLE_IDS.length) {
+  fail('роли', `ролей ${roles.length}, нужно ровно ${ROLE_IDS.length}`)
+}
+
+const roleIds = new Set()
+const fillers = roles.filter((role) => !role.counted)
+if (fillers.length !== 1) fail('роли', `остаточных ролей ${fillers.length}, нужна ровно одна (мирный)`)
+
+for (const role of roles) {
+  const where = `роль ${role.id ?? '(без id)'}`
+  if (!ROLE_IDS.includes(role.id)) fail(where, `неизвестный id «${role.id}»`)
+  else if (roleIds.has(role.id)) fail(where, 'id повторяется')
+  else roleIds.add(role.id)
+
+  if (!FACTIONS.includes(role.faction)) fail(where, `неизвестная фракция «${role.faction}»`)
+  if (typeof role.emoji !== 'string' || !role.emoji.trim()) fail(where, 'пустой emoji')
+  if (typeof role.counted !== 'boolean') fail(where, 'counted — не boolean')
+  if (typeof role.unique !== 'boolean') fail(where, 'unique — не boolean')
+  if (role.requiresMafia && role.id !== 'don') fail(where, 'requiresMafia бывает только у Дона')
+  if (role.nightOrder !== undefined && !Number.isInteger(role.nightOrder)) {
+    fail(where, `nightOrder «${role.nightOrder}» — не целое`)
+  }
+
+  for (const [field, limit] of [
+    ['title', MAX_ROLE_TITLE],
+    ['tagline', MAX_ROLE_TAGLINE],
+    ['description', MAX_ROLE_DESCRIPTION],
+  ]) {
+    for (const lang of LANGS) {
+      const text = role[field]?.[lang]
+      if (typeof text !== 'string' || !text.trim()) fail(where, `пустой ${field} на ${lang}`)
+      else if (length(text) > limit) fail(where, `${field} на ${lang}: длина ${length(text)} > ${limit}`)
+    }
+  }
+}
+
+/** Порядок ночи должен быть строгим: два шага с одним номером ведущему ничего не говорят. */
+const nightOrders = roles.filter((role) => role.nightOrder !== undefined).map((role) => role.nightOrder)
+if (new Set(nightOrders).size !== nightOrders.length) fail('роли', 'nightOrder повторяется')
+
 // --- Итог ---
 
 if (problems.length > 0) {
@@ -92,4 +141,4 @@ const stats = LANGS.map((lang) => {
   const questions = own.reduce((sum, deck) => sum + deck.questions.length, 0)
   return `${lang}: колод ${own.length}, вопросов ${questions}`
 })
-console.log(`✓ Контент в порядке — ${stats.join('; ')}`)
+console.log(`✓ Контент в порядке — ${stats.join('; ')}; ролей «Мафии» ${roles.length}`)
