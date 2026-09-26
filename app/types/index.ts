@@ -87,3 +87,36 @@ export interface SpySetup {
   /** Отмеченные темы, по умолчанию ['places']; пустой список допустим — тогда раздать нельзя. */
   themes: ThemeId[]
 }
+
+/** Уровни слов Alias; порядок массива — порядок на экране начала. */
+export const ALIAS_LEVELS = ['easy', 'normal', 'hard'] as const
+export type AliasLevel = (typeof ALIAS_LEVELS)[number]
+
+/** Уровень Alias в справочнике: общий для обоих языков, слова у каждого языка свои. */
+export interface AliasLevelInfo {
+  id: AliasLevel
+  emoji: string
+  title: Record<Lang, string>
+}
+
+export interface AliasTeam {
+  /** Из набора 🦊 🐻 🦉 🐺 по месту команды, не меняется. */
+  emoji: string
+  /** По умолчанию «Лисы», «Медведи»…; переименовывается. */
+  name: string
+  players: string[]
+}
+
+/** Экран начала Alias — ровно в таком виде лежит в localStorage. */
+export interface AliasSetup {
+  /** 2…4, по умолчанию 2. Отдельного списка игроков нет: состав — объединение `players` команд. */
+  teams: AliasTeam[]
+  /** До скольки очков играть, по умолчанию 30. */
+  target: 20 | 30 | 50 | 75
+  /** Длительность хода в секундах, по умолчанию 60. */
+  turnSeconds: 30 | 45 | 60 | 90
+  /** Отмеченные уровни, по умолчанию ['easy', 'normal']; пустой список допустим — тогда начать нельзя. */
+  levels: AliasLevel[]
+  skipPenalty: boolean
+  sound: boolean
+}

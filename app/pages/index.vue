@@ -63,6 +63,13 @@ const groups = computed(() => {
             <span class="deck-count">{{ t.spySubtitle }}</span>
           </NuxtLink>
         </li>
+        <li>
+          <NuxtLink to="/alias" class="deck">
+            <span class="deck-emoji deck-icon" aria-hidden="true"><GameIcon name="alias" /></span>
+            <span class="deck-title">{{ t.alias }}</span>
+            <span class="deck-count">{{ t.aliasSubtitle }}</span>
+          </NuxtLink>
+        </li>
       </ul>
     </section>
   </main>

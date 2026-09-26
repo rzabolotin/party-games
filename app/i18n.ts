@@ -78,6 +78,33 @@ export interface Messages {
   spyRoundOver: string
   spyNewRound: string
   spyEditSetup: string
+  alias: string
+  aliasSubtitle: string
+  aliasTeams: string
+  /** Подпись для чтения с экрана у игрока: {name} — игрок, {team} — куда он уйдёт по тапу. */
+  aliasMoveTo: string
+  aliasMoveHint: string
+  aliasTeamName: string
+  aliasRemoveTeam: string
+  aliasAddTeam: string
+  aliasShuffle: string
+  aliasPlayerName: string
+  /** Подсказка под полем, когда состав упёрся в потолок; {n} — потолок. */
+  aliasPlayersFull: string
+  aliasTarget: string
+  aliasTurnSeconds: string
+  /** Подпись значения длительности; {n} — секунды. */
+  aliasSeconds: string
+  aliasLevels: string
+  aliasSkipPenalty: string
+  aliasSound: string
+  /** Почему «Начать» недоступна; выводится над кнопкой. */
+  aliasBlockers: Record<'fewPlayers' | 'smallTeam' | 'noLevels', string>
+  aliasRules: string
+  /** Пункты листа «Правила»; {n} — до скольки очков играть. */
+  aliasRulesItems: string[]
+  aliasStart: string
+  aliasSoon: string
 }
 
 /** Названия языков — на самом языке, чтобы переключатель читался при любом текущем. */
@@ -167,6 +194,39 @@ export const messages: Record<Lang, Messages> = {
     spyRoundOver: 'Раунд окончен',
     spyNewRound: 'Новый раунд',
     spyEditSetup: 'Изменить состав',
+    alias: 'Alias',
+    aliasSubtitle: 'Объясняй слова командами',
+    aliasTeams: 'Команды',
+    aliasMoveTo: '{name} — перевести в команду «{team}»',
+    aliasMoveHint: 'Тап по игроку переводит его в следующую команду.',
+    aliasTeamName: 'Название команды',
+    aliasRemoveTeam: 'Удалить команду',
+    aliasAddTeam: '+ команда',
+    aliasShuffle: 'Перемешать',
+    aliasPlayerName: 'Добавить игрока',
+    aliasPlayersFull: 'Больше {n} игроков добавить нельзя.',
+    aliasTarget: 'До скольки очков',
+    aliasTurnSeconds: 'Длительность хода',
+    aliasSeconds: '{n} с',
+    aliasLevels: 'Слова',
+    aliasSkipPenalty: 'Штраф за пропуск',
+    aliasSound: 'Звук',
+    aliasBlockers: {
+      fewPlayers: 'Нужно хотя бы 4 игрока.',
+      smallTeam: 'В каждой команде должно быть хотя бы 2 человека.',
+      noLevels: 'Отметьте хотя бы один уровень слов.',
+    },
+    aliasRules: 'Правила',
+    aliasRulesItems: [
+      'Команды ходят по очереди, объясняющий внутри команды меняется.',
+      'Объясняй слово другими словами. Нельзя однокоренные, жесты, звуки «похоже на…» и перевод на другой язык.',
+      'Угадали — +1, пропустили — −1, если штраф включён.',
+      'Когда время вышло, последнее слово могут угадывать все. Очко получает команда, которая угадала первой.',
+      'После хода слова можно исправить.',
+      'Игра идёт до {n} очков, круг доигрывается до конца, при ничьей играется ещё круг.',
+    ],
+    aliasStart: 'Начать',
+    aliasSoon: 'Скоро',
   },
   en: {
     deckTypes: {
@@ -248,5 +308,38 @@ export const messages: Record<Lang, Messages> = {
     spyRoundOver: 'Round over',
     spyNewRound: 'New round',
     spyEditSetup: 'Change setup',
+    alias: 'Alias',
+    aliasSubtitle: 'Explain words in teams',
+    aliasTeams: 'Teams',
+    aliasMoveTo: '{name} — move to team “{team}”',
+    aliasMoveHint: 'Tap a player to move them to the next team.',
+    aliasTeamName: 'Team name',
+    aliasRemoveTeam: 'Remove team',
+    aliasAddTeam: '+ team',
+    aliasShuffle: 'Shuffle',
+    aliasPlayerName: 'Add a player',
+    aliasPlayersFull: 'No more than {n} players.',
+    aliasTarget: 'Play to',
+    aliasTurnSeconds: 'Turn length',
+    aliasSeconds: '{n} s',
+    aliasLevels: 'Words',
+    aliasSkipPenalty: 'Penalty for skipping',
+    aliasSound: 'Sound',
+    aliasBlockers: {
+      fewPlayers: 'You need at least 4 players.',
+      smallTeam: 'Every team needs at least 2 people.',
+      noLevels: 'Pick at least one word level.',
+    },
+    aliasRules: 'Rules',
+    aliasRulesItems: [
+      'Teams take turns, and the explainer within a team rotates.',
+      'Explain the word in other words. No words with the same root, no gestures, no “sounds like…” and no translating into another language.',
+      'Guessed — +1, skipped — −1 if the penalty is on.',
+      'When time is up, everyone may guess the last word. The team that guesses first gets the point.',
+      'After the turn, words can be corrected.',
+      'Play to {n} points; the round is played to the end, and a tie for first place means one more round.',
+    ],
+    aliasStart: 'Start',
+    aliasSoon: 'Coming soon',
   },
 }
