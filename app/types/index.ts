@@ -120,3 +120,16 @@ export interface AliasSetup {
   skipPenalty: boolean
   sound: boolean
 }
+
+/** Партия Alias. Правила и команды снимаются с экрана начала на старте и дальше от него не зависят. */
+export interface AliasGame {
+  lang: Lang
+  rules: Pick<AliasSetup, 'target' | 'turnSeconds' | 'levels' | 'skipPenalty' | 'sound'>
+  /** `nextExplainer` — индекс в `players` того, кто объясняет в следующий ход команды. */
+  teams: (AliasTeam & { score: number; nextExplainer: number })[]
+  /** Индекс команды, которая ходит. */
+  turn: number
+  /** Имя игрока → слов, засчитанных его команде за его ходы. */
+  explained: Record<string, number>
+  finished: boolean
+}

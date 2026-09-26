@@ -1,6 +1,8 @@
-// Только type-импорты из `~/types`: этот файл будет читать и Node-скрипт проверки контента,
+// Только type-импорты из `~/types`: этот файл читает и Node-скрипт проверки контента,
 // а алиас `~/types` Node не разрешает (типы он просто срезает).
 import type { AliasLevel, AliasLevelInfo, Lang } from '~/types'
+import en from './words/en.ts'
+import ru from './words/ru.ts'
 
 /**
  * Справочник уровней Alias: общий для обоих языков, как темы «Шпиона».
@@ -11,6 +13,12 @@ export const levels: AliasLevelInfo[] = [
   { id: 'normal', emoji: '🙂', title: { ru: 'Обычные', en: 'Normal' } },
   { id: 'hard', emoji: '🔥', title: { ru: 'Сложные', en: 'Hard' } },
 ]
+
+/**
+ * Слова по языкам и уровням. Это не переводы друг друга, как и слова «Шпиона»:
+ * у каждого языка свой список. Внутри языка слово не повторяется, в том числе между уровнями.
+ */
+export const words: Record<Lang, Record<AliasLevel, string[]>> = { ru, en }
 
 export function getLevel(id: AliasLevel): AliasLevelInfo {
   const level = levels.find((item) => item.id === id)

@@ -34,13 +34,18 @@ function tone(ctx: AudioContext, t0: number, duration: number, frequency: number
   osc.stop(t0 + duration + 0.02)
 }
 
-/** Сигнал конца: три коротких тона и длинный четвёртый, плюс вибрация там, где она есть (на iOS её нет). */
-export function playSignal() {
+/** Вибрация сигнала конца там, где она есть (на iOS её нет). Звучит и при выключенном звуке. */
+export function vibrateSignal() {
   try {
     navigator.vibrate?.([300, 150, 300, 150, 600])
   } catch {
     // Вибрация — необязательная часть сигнала.
   }
+}
+
+/** Сигнал конца: три коротких тона и длинный четвёртый, плюс вибрация. */
+export function playSignal() {
+  vibrateSignal()
   if (!context) return
   if (context.state === 'suspended') void context.resume().catch(() => {})
 

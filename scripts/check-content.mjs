@@ -16,11 +16,12 @@ const MAX_WORD = 24
 
 const DECKS_DIR = new URL('../app/decks/', import.meta.url)
 const { decks } = await import(new URL('index.ts', DECKS_DIR).href)
-const { LANGS, DECK_TYPES, FACTIONS, ROLE_IDS, THEME_IDS } = await import(
+const { LANGS, DECK_TYPES, FACTIONS, ROLE_IDS, THEME_IDS, ALIAS_LEVELS } = await import(
   new URL('../app/types/index.ts', import.meta.url).href
 )
 const { roles } = await import(new URL('../app/mafia/roles.ts', import.meta.url).href)
 const { themes, words } = await import(new URL('../app/spy/themes.ts', import.meta.url).href)
+const { levels: aliasLevels, words: aliasWords } = await import(new URL('../app/alias/levels.ts', import.meta.url).href)
 
 const problems = []
 const fail = (where, what) => problems.push(`${where}: ${what}`)
@@ -194,6 +195,56 @@ for (const lang of LANGS) {
   }
 }
 
+// --- Уровни и слова Alias: справочник общий, слова на каждом языке свои ---
+// Объём (350–450 на уровень) пока не проверяется: сейчас лежит временный набор.
+
+if (aliasLevels.length !== ALIAS_LEVELS.length) {
+  fail('уровни Alias', `уровней ${aliasLevels.length}, нужно ровно ${ALIAS_LEVELS.length}`)
+}
+
+const aliasLevelIds = new Set()
+for (const level of aliasLevels) {
+  const where = `уровень Alias ${level.id ?? '(без id)'}`
+  if (!ALIAS_LEVELS.includes(level.id)) fail(where, `неизвестный id «${level.id}»`)
+  else if (aliasLevelIds.has(level.id)) fail(where, 'id повторяется')
+  else aliasLevelIds.add(level.id)
+  if (typeof level.emoji !== 'string' || !level.emoji.trim()) fail(where, 'пустой emoji')
+  for (const lang of LANGS) {
+    const title = level.title?.[lang]
+    if (typeof title !== 'string' || !title.trim()) fail(where, `пустое название на ${lang}`)
+  }
+}
+
+for (const lang of LANGS) {
+  const own = aliasWords[lang] ?? {}
+  for (const id of Object.keys(own)) {
+    if (!aliasLevelIds.has(id)) fail(`слова Alias ${lang}`, `уровень «${id}» не заведён в справочнике`)
+  }
+
+  /** Уже встреченные слова языка, в том числе на других уровнях: нормализованное слово → где впервые. */
+  const seenWords = new Map()
+  for (const level of aliasLevels) {
+    const where = `слова Alias ${lang}/${level.id}`
+    const list = own[level.id]
+    if (!Array.isArray(list) || list.length === 0) {
+      fail(where, 'нет слов на этом языке')
+      continue
+    }
+    for (const [i, word] of list.entries()) {
+      const at = `${where} #${i + 1}`
+      if (typeof word !== 'string' || !word.trim()) {
+        fail(at, 'пустое слово')
+        continue
+      }
+      if (length(word) > MAX_WORD) fail(at, `длина ${length(word)} > ${MAX_WORD} — «${word}»`)
+      const key = normalize(word)
+      const first = seenWords.get(key)
+      if (first) fail(at, `повторяет ${first} — «${word}»`)
+      else seenWords.set(key, at)
+    }
+  }
+}
+
 // --- Итог ---
 
 if (problems.length > 0) {
@@ -207,4 +258,4 @@ const stats = LANGS.map((lang) => {
   const questions = own.reduce((sum, deck) => sum + deck.questions.length, 0)
   return `${lang}: колод ${own.length}, вопросов ${questions}`
 })
-console.log(`✓ Контент в порядке — ${stats.join('; ')}; ролей «Мафии» ${roles.length}; тем «Шпиона» ${themes.length}`)
+console.log(`✓ Контент в порядке — ${stats.join('; ')}; ролей «Мафии» ${roles.length}; тем «Шпиона» ${themes.length}; уровней Alias ${aliasLevels.length}`)

@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { levels } from '~/alias/levels'
+import { drawWord, forgetExhausted } from '~/alias/draw'
+import { applyTurn, explainerOf, newGame, turnDeltas, type AliasTurn } from '~/alias/game'
+import { levels, words } from '~/alias/levels'
 import { ALIAS_MAX_PLAYERS, TARGETS, TURN_SECONDS, useAliasSetup } from '~/composables/useAliasSetup'
+import { useCountdown } from '~/composables/useCountdown'
 import { useMessages } from '~/composables/useMessages'
 import { useSettings } from '~/composables/useSettings'
+import { useWakeLock } from '~/composables/useWakeLock'
+import { playSignal, playTick, unlockSound, vibrateSignal } from '~/sound'
+import type { AliasGame, AliasTeam } from '~/types'
 
 const t = useMessages()
 const settings = useSettings()
@@ -23,13 +29,197 @@ const {
   toggleLevel,
 } = useAliasSetup()
 
-// --- Стейт-машина: setup ⇄ rules; setup → soon (ход — тикет 03) ---
+// --- Стейт-машина: setup ⇄ rules; setup → handoff → turn → last → review → handoff; turn → handoff («Сбросить ход») ---
 
-const stage = ref<'setup' | 'rules' | 'soon'>('setup')
+const stage = ref<'setup' | 'rules' | 'handoff' | 'turn' | 'last' | 'review'>('setup')
+/** Идёт партия: экран не гаснет, выход — только через подтверждение. */
+const inGame = computed(() => stage.value !== 'setup' && stage.value !== 'rules')
+useWakeLock(inGame)
+
+/** Партия живёт только в памяти, сохранения пока нет. */
+const game = ref<AliasGame | null>(null)
+/** Слова, показанные в этой партии, — чтобы не повторялись; между партиями не помнятся. */
+let played = new Set<string>()
 
 function start() {
   if (blocker.value) return
-  stage.value = 'soon'
+  game.value = newGame(setup, settings.lang)
+  played = new Set()
+  stage.value = 'handoff'
+}
+
+/** Выход из партии — только через подтверждение: одно случайное касание не должно рушить счёт. */
+function exitGame() {
+  if (!confirm(t.value.aliasExitConfirm)) return
+  leaveGame()
+}
+
+function leaveGame() {
+  countdown.stop()
+  game.value = null
+  stage.value = 'setup'
+}
+
+// «Назад» браузера или системы посреди партии спрашивает то же, что «Выйти».
+onBeforeRouteLeave(() => {
+  if (!inGame.value) return true
+  if (!confirm(t.value.aliasExitConfirm)) return false
+  countdown.stop()
+  return true
+})
+
+const teamLabel = (team: AliasTeam) => `${team.emoji} ${team.name}`
+/** Минус — типографский, как в «−1» правил. */
+const formatScore = (n: number) => (n < 0 ? `−${-n}` : String(n))
+const formatDelta = (n: number) => (n > 0 ? `+${n}` : formatScore(n))
+
+const currentTeam = computed(() => (game.value ? game.value.teams[game.value.turn]! : null))
+const explainer = computed(() => (game.value ? explainerOf(game.value) : ''))
+
+// --- Ход ---
+
+/** Отмеченные слова хода по порядку, без того, что сейчас на экране. */
+const turnWords = ref<AliasTurn['words']>([])
+/** Слово на экране; когда время вышло, оно становится последним. */
+const word = ref('')
+/** Кто угадал последнее слово; `null` — никто. */
+const lastTeam = ref<number | null>(null)
+
+function nextWord() {
+  const { lang, rules } = game.value!
+  const pool = words[lang]
+  forgetExhausted(pool, rules.levels, played)
+  const drawn = drawWord(pool, rules.levels, played)
+  // Сыгранным слово становится в момент показа — и пропущенное, и последнее, и из сброшенного хода.
+  played.add(drawn.word)
+  word.value = drawn.word
+}
+
+const countdown = useCountdown(() => game.value?.rules.turnSeconds ?? 60)
+countdown.onEnd(timeUp)
+
+/** «Я готов»: слова появляются только теперь. Этот же тап разблокирует звук на iOS. */
+function ready() {
+  if (!game.value) return
+  if (game.value.rules.sound) unlockSound()
+  turnWords.value = []
+  lastTeam.value = null
+  direction.value = 'up'
+  nextWord()
+  stage.value = 'turn'
+  countdown.start()
+}
+
+function mark(guessed: boolean) {
+  if (stage.value !== 'turn' || !countdown.running.value) return
+  direction.value = guessed ? 'up' : 'down'
+  turnWords.value.push({ word: word.value, guessed })
+  nextWord()
+}
+
+/** Последние 5 секунд тикают — на каждой новой цифре, в конце вместо тика сигнал. */
+const hurry = computed(() => countdown.secondsLeft.value <= 5)
+watch(countdown.secondsLeft, (left) => {
+  if (stage.value === 'turn' && countdown.running.value && left >= 1 && left <= 5 && game.value?.rules.sound) {
+    playTick()
+  }
+})
+
+/** Время вышло: сигнал (без звука — только вибрация), слово на экране становится последним. */
+function timeUp() {
+  if (stage.value !== 'turn' || !game.value) return
+  if (game.value.rules.sound) playSignal()
+  else vibrateSignal()
+  stage.value = 'last'
+}
+
+/** «Сбросить ход» — с подтверждением; тот же объясняющий начинает заново, очки не начисляются. */
+function resetTurn() {
+  if (!confirm(t.value.aliasResetConfirm)) return
+  countdown.stop()
+  stage.value = 'handoff'
+}
+
+// --- Свайп: вверх — угадали, вниз — пропуск; касание без смещения — не жест ---
+
+const SWIPE_THRESHOLD = 40
+
+/** Куда уезжает слово: вверх при «угадали», вниз при пропуске. */
+const direction = ref<'up' | 'down'>('up')
+let swipe: { id: number; x: number; y: number } | null = null
+
+function onPointerDown(event: PointerEvent) {
+  if (!event.isPrimary) return
+  swipe = { id: event.pointerId, x: event.clientX, y: event.clientY }
+  // Захват — pointerup придёт сюда, даже если палец отпустили над кнопками.
+  ;(event.currentTarget as Element).setPointerCapture(event.pointerId)
+}
+
+function onPointerUp(event: PointerEvent) {
+  if (!swipe || event.pointerId !== swipe.id) return
+  const dx = event.clientX - swipe.x
+  const dy = event.clientY - swipe.y
+  swipe = null
+  if (Math.abs(dy) >= SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx)) mark(dy < 0)
+}
+
+function onPointerCancel() {
+  swipe = null
+}
+
+/**
+ * Кегль по длине: верхняя граница делится на число букв в самой длинной части слова,
+ * чтобы оно влезало в ширину без переноса посреди слова при любом масштабе шрифта.
+ */
+const wordStyle = computed(() => ({
+  '--longest': Math.max(1, ...word.value.split(/[\s-]+/).map((part) => [...part].length)),
+}))
+
+// --- Последнее слово и разбор ---
+
+function pickLast(team: number | null) {
+  if (stage.value !== 'last') return
+  lastTeam.value = team
+  stage.value = 'review'
+}
+
+const turnRecord = computed<AliasTurn>(() => ({
+  words: turnWords.value,
+  last: { word: word.value, team: lastTeam.value },
+}))
+
+/** Итог хода: ходящая команда всегда, другая — если ей ушло последнее слово. */
+const summary = computed(() => {
+  if (!game.value) return []
+  const deltas = turnDeltas(game.value, turnRecord.value)
+  const turn = game.value.turn
+  return game.value.teams
+    .map((team, index) => ({ team, index, delta: deltas[index]! }))
+    .filter((item) => item.index === turn || item.delta !== 0)
+})
+
+const lastLabel = computed(() => {
+  const team = lastTeam.value === null ? null : game.value?.teams[lastTeam.value]
+  return team ? teamLabel(team) : t.value.aliasNobody
+})
+
+function toggleWord(index: number) {
+  const item = turnWords.value[index]
+  if (item) item.guessed = !item.guessed
+}
+
+/** Тап по последнему слову: команды по порядку, потом «Никто», потом снова первая. */
+function cycleLast() {
+  const count = game.value?.teams.length ?? 0
+  const current = lastTeam.value
+  lastTeam.value = current === null ? 0 : current + 1 < count ? current + 1 : null
+}
+
+/** «Подтвердить»: очки в счёт, ход — следующей команде. */
+function confirmTurn() {
+  if (!game.value || stage.value !== 'review') return
+  applyTurn(game.value, turnRecord.value)
+  stage.value = 'handoff'
 }
 
 // --- Состав ---
@@ -265,17 +455,152 @@ const rulesItems = computed(() =>
       </div>
     </template>
 
-    <!-- Заглушка вместо хода -->
-    <template v-else>
+    <!-- Перед ходом: телефон передают объясняющему, слов на экране нет -->
+    <template v-else-if="stage === 'handoff' && game && currentTeam">
       <header class="top">
-        <button type="button" class="back" @click="stage = 'setup'">← {{ t.back }}</button>
+        <button type="button" class="back" @click="exitGame">← {{ t.aliasExit }}</button>
         <h1 class="title">{{ t.alias }}</h1>
       </header>
 
-      <div class="body soon">
-        <GameIcon name="alias" class="soon-icon" />
-        <p class="soon-text">{{ t.aliasSoon }}</p>
+      <div class="body handoff">
+        <GameIcon name="alias" class="handoff-icon" />
+        <p class="turn-of">{{ t.aliasTurnOf.replace('{team}', teamLabel(currentTeam)) }}</p>
+        <p class="explainer-label">{{ t.aliasExplainer }}</p>
+        <p class="explainer">{{ explainer }}</p>
+
+        <section class="scores" :aria-label="t.aliasScore">
+          <ul class="score-list">
+            <li
+              v-for="(team, index) in game.teams"
+              :key="team.emoji"
+              class="score"
+              :class="{ current: index === game.turn }"
+            >
+              <span class="score-emoji" aria-hidden="true">{{ team.emoji }}</span>
+              <span class="score-name">{{ team.name }}</span>
+              <span class="score-value">{{ formatScore(team.score) }}</span>
+            </li>
+          </ul>
+        </section>
+
+        <p class="reminder">{{ t.aliasReminder }}</p>
       </div>
+
+      <footer class="bottom">
+        <button type="button" class="action primary" @click="ready">{{ t.aliasReady }}</button>
+      </footer>
+    </template>
+
+    <!-- Ход: таймер сверху, слово в центре, свайп или кнопки -->
+    <template v-else-if="stage === 'turn'">
+      <header class="top">
+        <button type="button" class="back" @click="exitGame">← {{ t.aliasExit }}</button>
+        <button type="button" class="back reset" @click="resetTurn">↺ {{ t.aliasResetTurn }}</button>
+      </header>
+
+      <p class="clock" :class="{ hurry }" role="timer" :aria-label="`${t.aliasTimeLeft}: ${countdown.secondsLeft.value}`">
+        {{ countdown.secondsLeft.value }}
+      </p>
+
+      <section
+        class="word-area"
+        :aria-label="t.aliasSwipeHint"
+        @pointerdown="onPointerDown"
+        @pointerup="onPointerUp"
+        @pointercancel="onPointerCancel"
+      >
+        <Transition :name="`word-${direction}`">
+          <div :key="turnWords.length" class="word-face">
+            <p class="word" :style="wordStyle" :lang="game?.lang" aria-live="polite">{{ word }}</p>
+          </div>
+        </Transition>
+      </section>
+      <p class="swipe-hint" aria-hidden="true">{{ t.aliasSwipeHint }}</p>
+
+      <footer class="bottom">
+        <div class="buttons">
+          <button type="button" class="action secondary" @click="mark(false)">✗ {{ t.aliasSkip }}</button>
+          <button type="button" class="action primary" @click="mark(true)">✓ {{ t.aliasGuessed }}</button>
+        </div>
+      </footer>
+    </template>
+
+    <!-- Последнее слово: угадывают все, объясняющий отмечает, кто первым -->
+    <template v-else-if="stage === 'last' && game">
+      <header class="top">
+        <button type="button" class="back" @click="exitGame">← {{ t.aliasExit }}</button>
+      </header>
+
+      <div class="body last">
+        <p class="last-note" role="status">{{ t.aliasLastWord }}</p>
+        <div class="last-word-box">
+          <p class="word" :style="wordStyle" :lang="game.lang">{{ word }}</p>
+        </div>
+        <h2 class="group-title last-who">{{ t.aliasLastWho }}</h2>
+        <div class="last-teams">
+          <button
+            v-for="(team, index) in game.teams"
+            :key="team.emoji"
+            type="button"
+            class="action secondary last-team"
+            @click="pickLast(index)"
+          >
+            {{ teamLabel(team) }}
+          </button>
+          <button type="button" class="action secondary last-team nobody" @click="pickLast(null)">
+            {{ t.aliasNobody }}
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <!-- Разбор: тап меняет отметки, итог пересчитывается сразу -->
+    <template v-else-if="stage === 'review' && game">
+      <header class="top">
+        <button type="button" class="back" @click="exitGame">← {{ t.aliasExit }}</button>
+        <h1 class="title">{{ t.aliasReview }}</h1>
+      </header>
+
+      <div class="body">
+        <p class="hint review-hint">{{ t.aliasReviewHint }}</p>
+        <ul class="review" :lang="game.lang">
+          <li v-for="(item, index) in turnWords" :key="index">
+            <button
+              type="button"
+              class="review-row"
+              role="switch"
+              :aria-checked="item.guessed"
+              @click="toggleWord(index)"
+            >
+              <span class="review-word">{{ item.word }}</span>
+              <span class="mark" :class="item.guessed ? 'yes' : 'no'" aria-hidden="true">
+                {{ item.guessed ? '✓' : '✗' }}
+              </span>
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              class="review-row last-row"
+              :aria-label="t.aliasLastTo.replace('{word}', word).replace('{team}', lastLabel)"
+              @click="cycleLast"
+            >
+              <span class="review-word">{{ word }}</span>
+              <span class="last-to" :class="{ nobody: lastTeam === null }">{{ lastLabel }}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <footer class="bottom">
+        <p class="summary" role="status">
+          <span v-for="item in summary" :key="item.team.emoji" class="summary-item">
+            {{ item.team.emoji }} {{ item.team.name }}
+            <strong :class="{ negative: item.delta < 0 }">{{ formatDelta(item.delta) }}</strong>
+          </span>
+        </p>
+        <button type="button" class="action primary" @click="confirmTurn">{{ t.aliasConfirm }}</button>
+      </footer>
     </template>
   </main>
 </template>
@@ -734,25 +1059,341 @@ const rulesItems = computed(() =>
   font-weight: 700;
 }
 
-/* --- Заглушка --- */
+/* --- Перед ходом --- */
 
-.soon {
+.handoff {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
+  text-align: center;
 }
 
-.soon-icon {
+.handoff-icon {
+  flex: none;
   color: var(--accent);
-  font-size: clamp(56px, 14vh, 96px);
+  font-size: clamp(44px, 9vh, 72px);
 }
 
-.soon-text {
-  margin: 0;
-  font-size: calc(28px * var(--font-scale));
+.turn-of {
+  margin: 12px 0 0;
+  font-size: calc(22px * var(--font-scale));
   font-weight: 700;
+}
+
+.explainer-label {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: calc(17px * var(--font-scale));
+  font-weight: 600;
+}
+
+.explainer {
+  max-width: 100%;
+  margin: 2px 0 0;
+  color: var(--accent);
+  font-size: calc(36px * var(--font-scale));
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.scores {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.score-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.score {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 6px 14px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 18px;
+}
+
+.score.current {
+  border-color: var(--accent);
+}
+
+.score-emoji {
+  flex: none;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.score-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.score-value {
+  flex: none;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.reminder {
+  margin: 16px 4px 0;
+  color: var(--muted);
+  font-size: calc(16px * var(--font-scale));
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* --- Ход --- */
+
+.reset {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+/* Цифры табличные — ширина отсчёта не прыгает от секунды к секунде. */
+.clock {
+  flex: none;
+  margin: 4px 0 0;
+  font-size: clamp(40px, 9vh, 64px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+}
+
+.clock.hurry {
+  color: var(--accent);
+}
+
+/*
+ * Поле слова — и контейнер для кегля (cqi), и зона свайпа. touch-action: none — браузер не
+ * перехватывает вертикальный жест под скролл и «резинку», pointer-события доходят целиком.
+ */
+.word-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  container-type: inline-size;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.word-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 4px;
+  text-align: center;
+}
+
+/*
+ * Кегль: базовый, умноженный на масштаб из настроек, но не больше, чем позволяет самая длинная
+ * часть слова (--longest букв): 140cqi на всю часть — запас на широкие буквы вроде «ж» и «щ».
+ */
+.word {
+  max-width: 100%;
+  margin: 0;
+  font-size: min(calc(56px * var(--font-scale)), calc(140cqi / var(--longest)), 14vh);
+  font-weight: 700;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.swipe-hint {
+  flex: none;
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Смена слова: угаданное уезжает вверх, пропущенное — вниз, новое въезжает с другой стороны. */
+.word-up-enter-active,
+.word-up-leave-active,
+.word-down-enter-active,
+.word-down-leave-active {
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.word-up-leave-to,
+.word-down-enter-from {
+  transform: translateY(-40%);
+  opacity: 0;
+}
+
+.word-up-enter-from,
+.word-down-leave-to {
+  transform: translateY(40%);
+  opacity: 0;
+}
+
+/* --- Последнее слово --- */
+
+.last {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+}
+
+.last-note {
+  margin: 0;
+  color: var(--accent);
+  font-size: calc(18px * var(--font-scale));
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.last-word-box {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 12px 4px;
+  container-type: inline-size;
+}
+
+.last-who {
+  margin: 8px 0 10px;
+}
+
+.last-teams {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.last-team {
+  flex: none;
+  min-height: 56px;
+  font-size: 20px;
+}
+
+.last-team.nobody {
+  color: var(--muted);
+}
+
+/* --- Разбор --- */
+
+.review-hint {
+  margin: 0 4px 10px;
+}
+
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.review-row:active {
+  background: var(--surface-active);
+}
+
+.review-word {
+  flex: 1;
+  min-width: 0;
+  font-size: calc(18px * var(--font-scale));
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.mark {
+  flex: none;
+  width: 32px;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mark.yes {
+  color: var(--accent);
+}
+
+.mark.no {
+  color: var(--muted);
+}
+
+/* Последнее слово — отдельно от остальных: рамка и команда вместо галочки. */
+.last-row {
+  margin-top: 6px;
+  border: 2px dashed var(--surface-active);
+}
+
+.last-to {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.last-to.nobody {
+  color: var(--muted);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.summary-item strong {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-item strong.negative {
+  color: var(--danger);
 }
 
 /* --- Кнопки --- */
@@ -805,7 +1446,11 @@ const rulesItems = computed(() =>
 
 @media (prefers-reduced-motion: reduce) {
   .switch,
-  .knob {
+  .knob,
+  .word-up-enter-active,
+  .word-up-leave-active,
+  .word-down-enter-active,
+  .word-down-leave-active {
     transition: none;
   }
 }

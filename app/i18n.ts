@@ -104,7 +104,28 @@ export interface Messages {
   /** Пункты листа «Правила»; {n} — до скольки очков играть. */
   aliasRulesItems: string[]
   aliasStart: string
-  aliasSoon: string
+  /** Экран перед ходом: {team} — эмодзи и название ходящей команды. */
+  aliasTurnOf: string
+  aliasExplainer: string
+  aliasScore: string
+  aliasReminder: string
+  aliasReady: string
+  aliasExit: string
+  aliasExitConfirm: string
+  aliasResetTurn: string
+  aliasResetConfirm: string
+  aliasTimeLeft: string
+  aliasGuessed: string
+  aliasSkip: string
+  aliasSwipeHint: string
+  aliasLastWord: string
+  aliasLastWho: string
+  aliasNobody: string
+  aliasReview: string
+  aliasReviewHint: string
+  /** Подпись для чтения с экрана у последнего слова: {word} — слово, {team} — кому очко. */
+  aliasLastTo: string
+  aliasConfirm: string
 }
 
 /** Названия языков — на самом языке, чтобы переключатель читался при любом текущем. */
@@ -226,7 +247,26 @@ export const messages: Record<Lang, Messages> = {
       'Игра идёт до {n} очков, круг доигрывается до конца, при ничьей играется ещё круг.',
     ],
     aliasStart: 'Начать',
-    aliasSoon: 'Скоро',
+    aliasTurnOf: 'Ходят {team}',
+    aliasExplainer: 'объясняет',
+    aliasScore: 'Счёт',
+    aliasReminder: 'Нельзя: однокоренные, жесты, перевод',
+    aliasReady: 'Я готов',
+    aliasExit: 'Выйти',
+    aliasExitConfirm: 'Прервать партию? Счёт не сохранится.',
+    aliasResetTurn: 'Сбросить ход',
+    aliasResetConfirm: 'Сбросить ход? Очки этого хода не засчитаются, ход начнётся заново.',
+    aliasTimeLeft: 'Осталось',
+    aliasGuessed: 'Угадали',
+    aliasSkip: 'Пропустить',
+    aliasSwipeHint: 'Вверх — угадали, вниз — пропуск',
+    aliasLastWord: 'Время вышло! Последнее слово угадывают все',
+    aliasLastWho: 'Кто угадал первым?',
+    aliasNobody: 'Никто',
+    aliasReview: 'Разбор хода',
+    aliasReviewHint: 'Тап по слову меняет отметку.',
+    aliasLastTo: '{word} — очко: {team}',
+    aliasConfirm: 'Подтвердить',
   },
   en: {
     deckTypes: {
@@ -340,6 +380,25 @@ export const messages: Record<Lang, Messages> = {
       'Play to {n} points; the round is played to the end, and a tie for first place means one more round.',
     ],
     aliasStart: 'Start',
-    aliasSoon: 'Coming soon',
+    aliasTurnOf: '{team} to play',
+    aliasExplainer: 'explaining',
+    aliasScore: 'Score',
+    aliasReminder: 'No same-root words, gestures or translation',
+    aliasReady: 'I’m ready',
+    aliasExit: 'Exit',
+    aliasExitConfirm: 'Quit the game? The score will not be saved.',
+    aliasResetTurn: 'Restart turn',
+    aliasResetConfirm: 'Restart the turn? Its points will not count, and the turn starts over.',
+    aliasTimeLeft: 'Time left',
+    aliasGuessed: 'Got it',
+    aliasSkip: 'Skip',
+    aliasSwipeHint: 'Swipe up — got it, down — skip',
+    aliasLastWord: 'Time’s up! Anyone can guess the last word',
+    aliasLastWho: 'Who guessed first?',
+    aliasNobody: 'Nobody',
+    aliasReview: 'Turn review',
+    aliasReviewHint: 'Tap a word to change its mark.',
+    aliasLastTo: '{word} — point: {team}',
+    aliasConfirm: 'Confirm',
   },
 }
