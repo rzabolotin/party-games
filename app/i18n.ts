@@ -7,11 +7,13 @@ export const APP_NAME = 'Костёр'
 export interface Messages {
   deckTypes: Record<DeckType, string>
   adult: string
+  /** Подпись ссылки «назад» на главную — список игр. */
   decks: string
   deckNotFound: string
   next: string
   finished: string
   restart: string
+  /** Кнопка на финальной карточке: назад к темам раздела. */
   toDecks: string
   settings: string
   back: string
@@ -28,7 +30,6 @@ export interface Messages {
   nextReader: string
   resetProgress: string
   resetConfirm: string
-  otherGames: string
   mafia: string
   mafiaSubtitle: string
   mafiaPlayersCount: string
@@ -94,12 +95,12 @@ export const messages: Record<Lang, Messages> = {
       'never-have-i': 'Я никогда не…',
     },
     adult: 'Для взрослых',
-    decks: 'Колоды',
+    decks: 'Игры',
     deckNotFound: 'Колода не найдена',
     next: 'Дальше',
     finished: 'Вопросы закончились',
     restart: 'Заново',
-    toDecks: 'К колодам',
+    toDecks: 'К темам',
     settings: 'Настройки',
     back: 'Назад',
     language: 'Язык',
@@ -115,7 +116,6 @@ export const messages: Record<Lang, Messages> = {
     nextReader: 'Следующий:',
     resetProgress: 'Сбросить весь прогресс',
     resetConfirm: 'Сбросить прогресс всех колод? Отменить будет нельзя.',
-    otherGames: 'Другие игры',
     mafia: 'Мафия',
     mafiaSubtitle: 'Раздача ролей',
     mafiaPlayersCount: 'Игроков',
@@ -175,12 +175,12 @@ export const messages: Record<Lang, Messages> = {
       'never-have-i': 'Never Have I Ever',
     },
     adult: 'Adults only',
-    decks: 'Decks',
+    decks: 'Games',
     deckNotFound: 'Deck not found',
     next: 'Next',
     finished: 'No more questions',
     restart: 'Restart',
-    toDecks: 'To decks',
+    toDecks: 'To topics',
     settings: 'Settings',
     back: 'Back',
     language: 'Language',
@@ -196,7 +196,6 @@ export const messages: Record<Lang, Messages> = {
     nextReader: 'Next up:',
     resetProgress: 'Reset all progress',
     resetConfirm: 'Reset progress of all decks? This cannot be undone.',
-    otherGames: 'Other games',
     mafia: 'Mafia',
     mafiaSubtitle: 'Deal out roles',
     mafiaPlayersCount: 'Players',

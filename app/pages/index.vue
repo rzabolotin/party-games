@@ -1,27 +1,10 @@
 <script setup lang="ts">
 import { useMessages } from '~/composables/useMessages'
-import { useProgress } from '~/composables/useProgress'
-import { useSettings } from '~/composables/useSettings'
-import { decksByLang } from '~/decks'
+import { deckTypeEmoji } from '~/decks'
 import { APP_NAME } from '~/i18n'
 import { DECK_TYPES } from '~/types'
 
-const settings = useSettings()
 const t = useMessages()
-const { shownCount } = useProgress()
-
-// Колоды текущего языка, группы по типу игры в фиксированном порядке; 18+ — отдельной последней группой.
-const groups = computed(() => {
-  const own = decksByLang(settings.lang)
-  return [
-    ...DECK_TYPES.map((type) => ({
-      key: type,
-      title: t.value.deckTypes[type],
-      decks: own.filter((deck) => deck.type === type && !deck.adult),
-    })),
-    { key: 'adult', title: t.value.adult, decks: own.filter((deck) => deck.adult) },
-  ].filter((group) => group.decks.length > 0)
-})
 </script>
 
 <template>
@@ -31,40 +14,20 @@ const groups = computed(() => {
       <NuxtLink to="/settings" class="gear" :aria-label="t.settings" :title="t.settings">⚙️</NuxtLink>
     </header>
 
-    <section v-for="group in groups" :key="group.key" class="group">
-      <h2 class="group-title">{{ group.title }}</h2>
-      <ul class="decks">
-        <li v-for="deck in group.decks" :key="deck.id">
-          <NuxtLink :to="`/play/${deck.id}`" class="deck">
-            <span class="deck-emoji" aria-hidden="true">{{ deck.emoji }}</span>
-            <span class="deck-title">{{ deck.title }}</span>
-            <span v-if="deck.adult" class="deck-badge" role="img" :aria-label="t.adult">🔞</span>
-            <span class="deck-count">{{ shownCount(deck.id) }} / {{ deck.questions.length }}</span>
-          </NuxtLink>
-        </li>
-      </ul>
-    </section>
-
-    <!-- «Другие игры» — не колоды, а режимы; всегда последней группой, ниже всех колод. -->
-    <section class="group">
-      <h2 class="group-title">{{ t.otherGames }}</h2>
-      <ul class="decks">
-        <li>
-          <NuxtLink to="/mafia" class="deck">
-            <span class="deck-emoji" aria-hidden="true">🎭</span>
-            <span class="deck-title">{{ t.mafia }}</span>
-            <span class="deck-count">{{ t.mafiaSubtitle }}</span>
-          </NuxtLink>
-        </li>
-        <li>
-          <NuxtLink to="/spy" class="deck">
-            <span class="deck-emoji deck-icon" aria-hidden="true"><GameIcon name="spy" /></span>
-            <span class="deck-title">{{ t.spy }}</span>
-            <span class="deck-count">{{ t.spySubtitle }}</span>
-          </NuxtLink>
-        </li>
-      </ul>
-    </section>
+    <!-- Один список игр: сначала разделы с колодами (тема выбирается внутри), потом режимы. -->
+    <ul class="games">
+      <li v-for="type in DECK_TYPES" :key="type">
+        <MenuRow :to="`/decks/${type}`" :emoji="deckTypeEmoji[type]" :title="t.deckTypes[type]" />
+      </li>
+      <li>
+        <MenuRow to="/mafia" emoji="🎭" :title="t.mafia" :note="t.mafiaSubtitle" />
+      </li>
+      <li>
+        <MenuRow to="/spy" :title="t.spy" :note="t.spySubtitle">
+          <template #icon><GameIcon name="spy" /></template>
+        </MenuRow>
+      </li>
+    </ul>
   </main>
 </template>
 
@@ -108,70 +71,12 @@ const groups = computed(() => {
   background: var(--surface-active);
 }
 
-.group + .group {
-  margin-top: 28px;
-}
-
-.group-title {
-  margin: 0 0 10px 4px;
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.decks {
+.games {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.deck {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-height: 60px;
-  padding: 12px 16px;
-  border-radius: 14px;
-  background: var(--surface);
-  color: inherit;
-  font-size: 20px;
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.deck:active {
-  background: var(--surface-active);
-}
-
-.deck-emoji {
-  width: 36px;
-  font-size: 28px;
-  line-height: 1;
-  text-align: center;
-}
-
-/* Рисунок вместо эмодзи: то же место и тот же кегль, по центру слота. */
-.deck-icon {
-  display: flex;
-  justify-content: center;
-  color: var(--accent);
-}
-
-.deck-title {
-  flex: 1;
-}
-
-.deck-badge {
-  font-size: 22px;
-  line-height: 1;
-}
-
-.deck-count {
-  color: var(--muted);
-  font-size: 16px;
-  font-variant-numeric: tabular-nums;
 }
 </style>

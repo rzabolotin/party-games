@@ -1,4 +1,4 @@
-import type { Deck, Lang } from '~/types'
+import type { Deck, DeckType, Lang } from '~/types'
 // Расширения .ts в импортах обязательны: этот индекс загружает не только Vite,
 // но и Node-скрипт проверки контента (scripts/check-content.mjs).
 import ruWarmUp from './ru/warm-up.ts'
@@ -65,6 +65,13 @@ export const decks: Deck[] = [
   enNhieFood,
   enNhieLittleSins,
 ]
+
+/** Значок раздела на главной. */
+export const deckTypeEmoji: Record<DeckType, string> = {
+  'most-likely': '👉',
+  'would-you-rather': '⚖️',
+  'never-have-i': '🙈',
+}
 
 export function decksByLang(lang: Lang): Deck[] {
   return decks.filter((deck) => deck.lang === lang)
