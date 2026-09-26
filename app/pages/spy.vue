@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { useCountdown } from '~/composables/useCountdown'
 import { useMessages } from '~/composables/useMessages'
 import { useSettings } from '~/composables/useSettings'
 import { useSpySetup } from '~/composables/useSpySetup'
 import { useWakeLock } from '~/composables/useWakeLock'
 import { dealNextRound, type SpyDeal } from '~/spy/deal'
-import { playSignal, unlockSignal } from '~/spy/signal'
+import { playSignal, unlockSound } from '~/sound'
 import { getTheme } from '~/spy/themes'
 
 const t = useMessages()
@@ -54,7 +55,7 @@ const playerLabel = computed(() =>
 
 function startDeal() {
   if (!dealable.value) return
-  stopTicking()
+  countdown.stop()
   deal.value = dealNextRound(setup, settings.lang)
   index.value = 0
   revealed.value = false
@@ -84,7 +85,7 @@ function exitDeal() {
 }
 
 function editSetup() {
-  stopTicking()
+  countdown.stop()
   deal.value = null
   shownSpy.value = null
   stage.value = 'setup'
@@ -92,56 +93,26 @@ function editSetup() {
 
 // --- Раунд: таймер ---
 
-/**
- * Время считается от момента окончания (`Date.now()`), а не накоплением тиков: браузер
- * притормаживает таймеры в свёрнутой вкладке, а отсчёт отставать не должен.
- * Идёт — задан `endsAt`; на паузе — `endsAt` пуст, остаток лежит в `remainingMs`.
- */
-const endsAt = ref<number | null>(null)
-const remainingMs = ref(0)
-let ticker: ReturnType<typeof setInterval> | null = null
+const countdown = useCountdown(() => setup.minutes * 60)
+countdown.onEnd(() => endRound('timeout'))
 
-const paused = computed(() => stage.value === 'round' && endsAt.value === null)
+const paused = computed(() => stage.value === 'round' && !countdown.running.value)
 const clock = computed(() => {
-  const total = Math.max(0, Math.ceil(remainingMs.value / 1000))
+  const total = countdown.secondsLeft.value
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
 })
 
-function tick() {
-  if (endsAt.value === null) return
-  remainingMs.value = Math.max(0, endsAt.value - Date.now())
-  if (remainingMs.value === 0) endRound('timeout')
-}
-
-function startTicking() {
-  stopTicking()
-  endsAt.value = Date.now() + remainingMs.value
-  // Чаще секунды — чтобы смена цифры не запаздывала на целый тик.
-  ticker = setInterval(tick, 250)
-}
-
-function stopTicking() {
-  if (ticker !== null) clearInterval(ticker)
-  ticker = null
-  endsAt.value = null
-}
-
 /** «Старт»: таймер идёт только отсюда. Этот же тап разблокирует звук на iOS. */
 function startRound() {
-  unlockSignal()
-  remainingMs.value = setup.minutes * 60_000
+  unlockSound()
   stage.value = 'round'
-  startTicking()
+  countdown.start()
 }
 
 function togglePause() {
   if (stage.value !== 'round') return
-  if (paused.value) {
-    startTicking()
-  } else {
-    tick()
-    if (stage.value === 'round') stopTicking()
-  }
+  if (paused.value) countdown.resume()
+  else countdown.pause()
 }
 
 /** «Завершить» — с подтверждением: случайное касание не должно обрывать раунд. */
@@ -151,21 +122,11 @@ function finishRound() {
 }
 
 function endRound(reason: 'timeout' | 'finished') {
-  stopTicking()
+  countdown.stop()
   overReason.value = reason
   stage.value = 'over'
   if (reason === 'timeout') playSignal()
 }
-
-// Вкладку вернули из фона — пересчитать сразу, не дожидаясь следующего тика.
-function onVisibilityChange() {
-  if (document.visibilityState === 'visible') tick()
-}
-onMounted(() => document.addEventListener('visibilitychange', onVisibilityChange))
-onBeforeUnmount(() => {
-  document.removeEventListener('visibilitychange', onVisibilityChange)
-  stopTicking()
-})
 </script>
 
 <template>
