@@ -67,6 +67,16 @@ export interface Messages {
   spyExit: string
   spyExitConfirm: string
   spyAllSeen: string
+  spyStart: string
+  spyTimeLeft: string
+  spyPause: string
+  spyResume: string
+  spyPaused: string
+  spyFinish: string
+  spyFinishConfirm: string
+  spyTimeout: string
+  spyRoundOver: string
+  spyNewRound: string
   spyEditSetup: string
 }
 
@@ -146,6 +156,16 @@ export const messages: Record<Lang, Messages> = {
     spyExit: 'Выйти',
     spyExitConfirm: 'Прервать раздачу? Карточки придётся раздать заново.',
     spyAllSeen: 'Все посмотрели',
+    spyStart: 'Старт',
+    spyTimeLeft: 'Осталось',
+    spyPause: 'Пауза',
+    spyResume: 'Продолжить',
+    spyPaused: 'Пауза',
+    spyFinish: 'Завершить',
+    spyFinishConfirm: 'Завершить раунд?',
+    spyTimeout: 'Время вышло — шпион победил!',
+    spyRoundOver: 'Раунд окончен',
+    spyNewRound: 'Новый раунд',
     spyEditSetup: 'Изменить состав',
   },
   en: {
@@ -217,6 +237,16 @@ export const messages: Record<Lang, Messages> = {
     spyExit: 'Exit',
     spyExitConfirm: 'Stop dealing? The cards will have to be dealt again.',
     spyAllSeen: 'Everyone has seen their card',
+    spyStart: 'Start',
+    spyTimeLeft: 'Time left',
+    spyPause: 'Pause',
+    spyResume: 'Resume',
+    spyPaused: 'Paused',
+    spyFinish: 'End round',
+    spyFinishConfirm: 'End the round?',
+    spyTimeout: 'Time is up — the spy wins!',
+    spyRoundOver: 'Round over',
+    spyNewRound: 'New round',
     spyEditSetup: 'Change setup',
   },
 }

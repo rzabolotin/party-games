@@ -4,6 +4,7 @@ import { useSettings } from '~/composables/useSettings'
 import { useSpySetup } from '~/composables/useSpySetup'
 import { useWakeLock } from '~/composables/useWakeLock'
 import { dealNextRound, type SpyDeal } from '~/spy/deal'
+import { playSignal, unlockSignal } from '~/spy/signal'
 import { getTheme } from '~/spy/themes'
 
 const t = useMessages()
@@ -24,9 +25,11 @@ const {
 // Телефон едет по кругу, потом лежит на столе — экран не должен гаснуть ни на одном этапе.
 useWakeLock()
 
-// --- Стейт-машина: setup → deal → ready (раунд с таймером — тикет 03) ---
+// --- Стейт-машина: setup → deal → ready → round → over; over → deal («Новый раунд») или setup ---
 
-const stage = ref<'setup' | 'deal' | 'ready'>('setup')
+const stage = ref<'setup' | 'deal' | 'ready' | 'round' | 'over'>('setup')
+/** Чем кончился раунд: время вышло или стол нажал «Завершить». Шпион и слово не раскрываются ни там, ни там. */
+const overReason = ref<'timeout' | 'finished'>('finished')
 
 /** Раздача раунда. Живёт только в памяти, в localStorage не уходит. */
 const deal = ref<SpyDeal | null>(null)
@@ -51,6 +54,7 @@ const playerLabel = computed(() =>
 
 function startDeal() {
   if (!dealable.value) return
+  stopTicking()
   deal.value = dealNextRound(setup, settings.lang)
   index.value = 0
   revealed.value = false
@@ -80,10 +84,88 @@ function exitDeal() {
 }
 
 function editSetup() {
+  stopTicking()
   deal.value = null
   shownSpy.value = null
   stage.value = 'setup'
 }
+
+// --- Раунд: таймер ---
+
+/**
+ * Время считается от момента окончания (`Date.now()`), а не накоплением тиков: браузер
+ * притормаживает таймеры в свёрнутой вкладке, а отсчёт отставать не должен.
+ * Идёт — задан `endsAt`; на паузе — `endsAt` пуст, остаток лежит в `remainingMs`.
+ */
+const endsAt = ref<number | null>(null)
+const remainingMs = ref(0)
+let ticker: ReturnType<typeof setInterval> | null = null
+
+const paused = computed(() => stage.value === 'round' && endsAt.value === null)
+const clock = computed(() => {
+  const total = Math.max(0, Math.ceil(remainingMs.value / 1000))
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+})
+
+function tick() {
+  if (endsAt.value === null) return
+  remainingMs.value = Math.max(0, endsAt.value - Date.now())
+  if (remainingMs.value === 0) endRound('timeout')
+}
+
+function startTicking() {
+  stopTicking()
+  endsAt.value = Date.now() + remainingMs.value
+  // Чаще секунды — чтобы смена цифры не запаздывала на целый тик.
+  ticker = setInterval(tick, 250)
+}
+
+function stopTicking() {
+  if (ticker !== null) clearInterval(ticker)
+  ticker = null
+  endsAt.value = null
+}
+
+/** «Старт»: таймер идёт только отсюда. Этот же тап разблокирует звук на iOS. */
+function startRound() {
+  unlockSignal()
+  remainingMs.value = setup.minutes * 60_000
+  stage.value = 'round'
+  startTicking()
+}
+
+function togglePause() {
+  if (stage.value !== 'round') return
+  if (paused.value) {
+    startTicking()
+  } else {
+    tick()
+    if (stage.value === 'round') stopTicking()
+  }
+}
+
+/** «Завершить» — с подтверждением: случайное касание не должно обрывать раунд. */
+function finishRound() {
+  if (!confirm(t.value.spyFinishConfirm)) return
+  endRound('finished')
+}
+
+function endRound(reason: 'timeout' | 'finished') {
+  stopTicking()
+  overReason.value = reason
+  stage.value = 'over'
+  if (reason === 'timeout') playSignal()
+}
+
+// Вкладку вернули из фона — пересчитать сразу, не дожидаясь следующего тика.
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') tick()
+}
+onMounted(() => document.addEventListener('visibilitychange', onVisibilityChange))
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  stopTicking()
+})
 </script>
 
 <template>
@@ -250,11 +332,10 @@ function editSetup() {
       </footer>
     </template>
 
-    <!-- Все посмотрели: пока заглушка, раунд с таймером — тикет 03 -->
-    <template v-else>
+    <!-- Все посмотрели: телефон кладут на стол, таймер ждёт «Старт» -->
+    <template v-else-if="stage === 'ready'">
       <header class="top">
-        <NuxtLink to="/" class="back">← {{ t.decks }}</NuxtLink>
-        <h1 class="title">{{ t.spy }}</h1>
+        <button type="button" class="back" @click="exitDeal">← {{ t.spyExit }}</button>
       </header>
 
       <div class="body ready">
@@ -262,6 +343,43 @@ function editSetup() {
       </div>
 
       <footer class="bottom">
+        <button type="button" class="action primary" @click="startRound">{{ t.spyStart }}</button>
+      </footer>
+    </template>
+
+    <!-- Раунд: крупный отсчёт, видный с любого места за столом -->
+    <template v-else-if="stage === 'round'">
+      <header class="top">
+        <h1 class="title">{{ t.spy }}</h1>
+      </header>
+
+      <div class="body round">
+        <GameIcon name="timer" class="clock-icon" />
+        <p class="clock" :class="{ paused }" role="timer" :aria-label="`${t.spyTimeLeft}: ${clock}`">{{ clock }}</p>
+        <p v-if="paused" class="clock-note">{{ t.spyPaused }}</p>
+      </div>
+
+      <footer class="bottom actions">
+        <button type="button" class="action primary" @click="togglePause">
+          {{ paused ? t.spyResume : t.spyPause }}
+        </button>
+        <button type="button" class="action secondary" @click="finishRound">{{ t.spyFinish }}</button>
+      </footer>
+    </template>
+
+    <!-- Концовка: итог без раскрытия шпиона, слова и темы — кто победил, решает стол -->
+    <template v-else>
+      <header class="top">
+        <NuxtLink to="/" class="back">← {{ t.decks }}</NuxtLink>
+        <h1 class="title">{{ t.spy }}</h1>
+      </header>
+
+      <div class="body ready">
+        <p class="ready-text" role="status">{{ overReason === 'timeout' ? t.spyTimeout : t.spyRoundOver }}</p>
+      </div>
+
+      <footer class="bottom actions">
+        <button type="button" class="action primary" @click="startDeal">{{ t.spyNewRound }}</button>
         <button type="button" class="action secondary" @click="editSetup">{{ t.spyEditSetup }}</button>
       </footer>
     </template>
@@ -597,7 +715,48 @@ function editSetup() {
   text-align: center;
 }
 
+/* --- Раунд --- */
+
+.round {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.clock-icon {
+  color: var(--muted);
+  font-size: clamp(48px, 10vh, 80px);
+}
+
+/* Цифры табличные — ширина отсчёта не прыгает от секунды к секунде. */
+.clock {
+  margin: 0;
+  font-size: min(32vw, 24vh);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.clock.paused {
+  color: var(--muted);
+}
+
+.clock-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: calc(18px * var(--font-scale));
+  font-weight: 600;
+}
+
 /* --- Кнопки --- */
+
+.actions {
+  flex-direction: column;
+  gap: 8px;
+}
 
 .action {
   display: flex;
