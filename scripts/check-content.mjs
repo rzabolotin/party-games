@@ -13,10 +13,9 @@ const MAX_ROLE_DESCRIPTION = 180
 const MIN_WORDS = 20
 const MAX_WORDS = 30
 const MAX_WORD = 24
-/** Слова Alias: сколько на каждом уровне. Языки, где полный список уже есть, — остальные пока на временном наборе. */
+/** Слова Alias: сколько на каждом уровне каждого языка. */
 const MIN_ALIAS_WORDS = 350
 const MAX_ALIAS_WORDS = 450
-const ALIAS_SIZED_LANGS = ['ru']
 
 const DECKS_DIR = new URL('../app/decks/', import.meta.url)
 const { decks } = await import(new URL('index.ts', DECKS_DIR).href)
@@ -200,7 +199,6 @@ for (const lang of LANGS) {
 }
 
 // --- Уровни и слова Alias: справочник общий, слова на каждом языке свои ---
-// Объём (350–450 на уровень) проверяется для языков из ALIAS_SIZED_LANGS.
 
 if (aliasLevels.length !== ALIAS_LEVELS.length) {
   fail('уровни Alias', `уровней ${aliasLevels.length}, нужно ровно ${ALIAS_LEVELS.length}`)
@@ -234,7 +232,7 @@ for (const lang of LANGS) {
       fail(where, 'нет слов на этом языке')
       continue
     }
-    if (ALIAS_SIZED_LANGS.includes(lang) && (list.length < MIN_ALIAS_WORDS || list.length > MAX_ALIAS_WORDS)) {
+    if (list.length < MIN_ALIAS_WORDS || list.length > MAX_ALIAS_WORDS) {
       fail(where, `слов ${list.length}, нужно от ${MIN_ALIAS_WORDS} до ${MAX_ALIAS_WORDS}`)
     }
     for (const [i, word] of list.entries()) {
