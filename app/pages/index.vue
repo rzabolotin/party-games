@@ -56,6 +56,13 @@ const groups = computed(() => {
             <span class="deck-count">{{ t.mafiaSubtitle }}</span>
           </NuxtLink>
         </li>
+        <li>
+          <NuxtLink to="/spy" class="deck">
+            <span class="deck-emoji deck-icon" aria-hidden="true"><GameIcon name="spy" /></span>
+            <span class="deck-title">{{ t.spy }}</span>
+            <span class="deck-count">{{ t.spySubtitle }}</span>
+          </NuxtLink>
+        </li>
       </ul>
     </section>
   </main>
@@ -144,6 +151,13 @@ const groups = computed(() => {
   font-size: 28px;
   line-height: 1;
   text-align: center;
+}
+
+/* Рисунок вместо эмодзи: то же место и тот же кегль, по центру слота. */
+.deck-icon {
+  display: flex;
+  justify-content: center;
+  color: var(--accent);
 }
 
 .deck-title {

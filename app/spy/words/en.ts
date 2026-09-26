@@ -1,0 +1,35 @@
+import type { ThemeId } from '~/types'
+
+/** Spy words in English: singular, capitalized, ≤ 24 characters. */
+export default {
+  places: [
+    'School',
+    'Kindergarten',
+    'Hospital',
+    'Airport',
+    'Train station',
+    'Beach',
+    'Zoo',
+    'Circus',
+    'Movie theater',
+    'Library',
+    'Museum',
+    'Supermarket',
+    'Bakery',
+    'Hair salon',
+    'Restaurant',
+    'Fire station',
+    'Police station',
+    'Swimming pool',
+    'Ice rink',
+    'Stadium',
+    'Playground',
+    'Amusement park',
+    'Farm',
+    'Campsite',
+    'Castle',
+    'Pirate ship',
+    'Submarine',
+    'Space station',
+  ],
+} satisfies Partial<Record<ThemeId, string[]>>

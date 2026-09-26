@@ -54,3 +54,36 @@ export interface MafiaSetup {
   /** Счётчики ролей, кроме мирного: мирные — остаток `total` минус сумма счётчиков. */
   counts: Record<CountedRoleId, number>
 }
+
+/** Темы «Шпиона»; порядок массива — порядок на экране настроек. */
+export const THEME_IDS = [
+  'places',
+  'animals',
+  'professions',
+  'countries',
+  'cities',
+  'sports',
+  'fairy-tales',
+  'cartoons',
+  'superheroes',
+  'home',
+] as const
+export type ThemeId = (typeof THEME_IDS)[number]
+
+/** Тема «Шпиона» в справочнике: общая для обоих языков, слова лежат отдельно по языкам. */
+export interface SpyTheme {
+  id: ThemeId
+  title: Record<Lang, string>
+}
+
+/** Настройки «Шпиона» — ровно в таком виде лежат в localStorage. */
+export interface SpySetup {
+  /** 3…20, по умолчанию 6. */
+  total: number
+  /** 1…total−2, по умолчанию 1. */
+  spies: number
+  /** Минуты на раунд, 3…10, по умолчанию 6. */
+  minutes: number
+  /** Отмеченные темы, по умолчанию ['places']; пустой список допустим — тогда раздать нельзя. */
+  themes: ThemeId[]
+}

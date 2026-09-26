@@ -48,6 +48,26 @@ export interface Messages {
   mafiaNightIntro: string
   mafiaRedeal: string
   mafiaEditSetup: string
+  spy: string
+  spySubtitle: string
+  spyPlayersCount: string
+  spySpiesCount: string
+  spyMinutes: string
+  spyThemes: string
+  /** Подсказка под счётчиками: показывается, но раздачу не блокирует. */
+  spyWarnings: Record<'moreSpies' | 'tooManySpies', string>
+  /** Почему «Раздать» заблокирована: не отмечено ни одной темы. */
+  spyNoThemes: string
+  spyDeal: string
+  /** Подпись в шапке раздачи: {n} — номер игрока, {m} — сколько всего. */
+  spyPlayerOf: string
+  spyReveal: string
+  spyYouAreSpy: string
+  spyPass: string
+  spyExit: string
+  spyExitConfirm: string
+  spyAllSeen: string
+  spyEditSetup: string
 }
 
 /** Названия языков — на самом языке, чтобы переключатель читался при любом текущем. */
@@ -107,6 +127,26 @@ export const messages: Record<Lang, Messages> = {
     mafiaNightIntro: 'Город засыпает',
     mafiaRedeal: 'Раздать заново',
     mafiaEditSetup: 'Изменить состав',
+    spy: 'Шпион',
+    spySubtitle: 'Найди, кто не в теме',
+    spyPlayersCount: 'Игроков',
+    spySpiesCount: 'Шпионов',
+    spyMinutes: 'Минут на раунд',
+    spyThemes: 'Темы',
+    spyWarnings: {
+      moreSpies: 'За большим столом интереснее играть с двумя шпионами.',
+      tooManySpies: 'Шпионов половина стола и больше — вычислить их будет почти некому.',
+    },
+    spyNoThemes: 'Отметьте хотя бы одну тему, чтобы раздать.',
+    spyDeal: 'Раздать',
+    spyPlayerOf: 'Игрок {n} из {m}',
+    spyReveal: 'Тапни, чтобы увидеть карточку',
+    spyYouAreSpy: 'Ты шпион',
+    spyPass: 'Передать дальше',
+    spyExit: 'Выйти',
+    spyExitConfirm: 'Прервать раздачу? Карточки придётся раздать заново.',
+    spyAllSeen: 'Все посмотрели',
+    spyEditSetup: 'Изменить состав',
   },
   en: {
     deckTypes: {
@@ -158,5 +198,25 @@ export const messages: Record<Lang, Messages> = {
     mafiaNightIntro: 'The town falls asleep',
     mafiaRedeal: 'Deal again',
     mafiaEditSetup: 'Change line-up',
+    spy: 'Spy',
+    spySubtitle: 'Find who is out of the loop',
+    spyPlayersCount: 'Players',
+    spySpiesCount: 'Spies',
+    spyMinutes: 'Minutes per round',
+    spyThemes: 'Themes',
+    spyWarnings: {
+      moreSpies: 'A big table is more fun with two spies.',
+      tooManySpies: 'Spies are half the table or more — there will be almost nobody to catch them.',
+    },
+    spyNoThemes: 'Pick at least one theme to deal.',
+    spyDeal: 'Deal',
+    spyPlayerOf: 'Player {n} of {m}',
+    spyReveal: 'Tap to see your card',
+    spyYouAreSpy: 'You are the spy',
+    spyPass: 'Pass on',
+    spyExit: 'Exit',
+    spyExitConfirm: 'Stop dealing? The cards will have to be dealt again.',
+    spyAllSeen: 'Everyone has seen their card',
+    spyEditSetup: 'Change setup',
   },
 }

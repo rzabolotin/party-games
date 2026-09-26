@@ -9,13 +9,18 @@ const MAX_LENGTH = 90
 const MAX_ROLE_TITLE = 24
 const MAX_ROLE_TAGLINE = 90
 const MAX_ROLE_DESCRIPTION = 180
+/** Слова «Шпиона»: сколько в теме на каждом языке и какой длины, чтобы влезть на карточку. */
+const MIN_WORDS = 20
+const MAX_WORDS = 30
+const MAX_WORD = 24
 
 const DECKS_DIR = new URL('../app/decks/', import.meta.url)
 const { decks } = await import(new URL('index.ts', DECKS_DIR).href)
-const { LANGS, DECK_TYPES, FACTIONS, ROLE_IDS } = await import(
+const { LANGS, DECK_TYPES, FACTIONS, ROLE_IDS, THEME_IDS } = await import(
   new URL('../app/types/index.ts', import.meta.url).href
 )
 const { roles } = await import(new URL('../app/mafia/roles.ts', import.meta.url).href)
+const { themes, words } = await import(new URL('../app/spy/themes.ts', import.meta.url).href)
 
 const problems = []
 const fail = (where, what) => problems.push(`${where}: ${what}`)
@@ -127,6 +132,67 @@ for (const role of roles) {
 const nightOrders = roles.filter((role) => role.nightOrder !== undefined).map((role) => role.nightOrder)
 if (new Set(nightOrders).size !== nightOrders.length) fail('роли', 'nightOrder повторяется')
 
+// --- Темы «Шпиона»: справочник общий, слова на каждом языке свои ---
+// Ровно 10 тем пока не требуем: их добавляет тикет 04, до него тема одна.
+
+const themeIds = new Set()
+/** Названия тем по языкам: нормализованное название → id темы, где встретилось впервые. */
+const themeTitles = new Map(LANGS.map((lang) => [lang, new Map()]))
+
+for (const theme of themes) {
+  const where = `тема ${theme.id ?? '(без id)'}`
+  if (!THEME_IDS.includes(theme.id)) fail(where, `неизвестный id «${theme.id}»`)
+  else if (themeIds.has(theme.id)) fail(where, 'id повторяется')
+  else themeIds.add(theme.id)
+
+  for (const lang of LANGS) {
+    const title = theme.title?.[lang]
+    if (typeof title !== 'string' || !title.trim()) {
+      fail(where, `пустое название на ${lang}`)
+      continue
+    }
+    const key = normalize(title)
+    const first = themeTitles.get(lang).get(key)
+    if (first) fail(where, `название на ${lang} совпадает с темой ${first}`)
+    else themeTitles.get(lang).set(key, theme.id)
+  }
+}
+
+for (const lang of LANGS) {
+  const own = words[lang] ?? {}
+  // Слова без темы в справочнике на экран не попадут — значит, забыли завести тему.
+  for (const id of Object.keys(own)) {
+    if (!themeIds.has(id)) fail(`слова ${lang}`, `тема «${id}» не заведена в справочнике`)
+  }
+
+  /** Уже встреченные слова языка: нормализованное слово → где встретилось впервые. */
+  const seenWords = new Map()
+  for (const theme of themes) {
+    const where = `слова ${lang}/${theme.id}`
+    const list = own[theme.id]
+    // Темы одинаковые в обоих языках: у каждой темы справочника слова есть на каждом языке.
+    if (!Array.isArray(list)) {
+      fail(where, 'нет слов на этом языке')
+      continue
+    }
+    if (list.length < MIN_WORDS || list.length > MAX_WORDS) {
+      fail(where, `слов ${list.length}, нужно от ${MIN_WORDS} до ${MAX_WORDS}`)
+    }
+    for (const [i, word] of list.entries()) {
+      const at = `${where} #${i + 1}`
+      if (typeof word !== 'string' || !word.trim()) {
+        fail(at, 'пустое слово')
+        continue
+      }
+      if (length(word) > MAX_WORD) fail(at, `длина ${length(word)} > ${MAX_WORD} — «${word}»`)
+      const key = normalize(word)
+      const first = seenWords.get(key)
+      if (first) fail(at, `повторяет ${first} — «${word}»`)
+      else seenWords.set(key, at)
+    }
+  }
+}
+
 // --- Итог ---
 
 if (problems.length > 0) {
@@ -140,4 +206,4 @@ const stats = LANGS.map((lang) => {
   const questions = own.reduce((sum, deck) => sum + deck.questions.length, 0)
   return `${lang}: колод ${own.length}, вопросов ${questions}`
 })
-console.log(`✓ Контент в порядке — ${stats.join('; ')}; ролей «Мафии» ${roles.length}`)
+console.log(`✓ Контент в порядке — ${stats.join('; ')}; ролей «Мафии» ${roles.length}; тем «Шпиона» ${themes.length}`)
