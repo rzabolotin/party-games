@@ -14,6 +14,7 @@ import {
   type AliasTurn,
 } from '~/alias/game'
 import { levels, words } from '~/alias/levels'
+import { loadPlayed, savePlayed } from '~/alias/played'
 import { ALIAS_MAX_PLAYERS, TARGETS, TURN_SECONDS, useAliasSetup } from '~/composables/useAliasSetup'
 import { useCountdown } from '~/composables/useCountdown'
 import { useMessages } from '~/composables/useMessages'
@@ -57,12 +58,15 @@ useWakeLock(computed(() => stage.value !== 'setup' && stage.value !== 'rules'))
 /** Идёт партия: выход — только через подтверждение. На «Продолжить?» и финале уйти можно сразу. */
 const inGame = computed(() => ['handoff', 'turn', 'last', 'review'].includes(stage.value))
 
-/** Слова, показанные в этой партии, — чтобы не повторялись; между партиями не помнятся. */
+/**
+ * Сыгранные слова языка партии — чтобы не повторялись и между партиями на этом телефоне.
+ * Читаются из `koster.alias-played` на старте и при «Продолжить», пишутся при каждом показе.
+ */
 let played = new Set<string>()
 
 function begin(next: AliasGame) {
   game.value = next
-  played = new Set()
+  played = loadPlayed(next.lang)
   saveGame(next)
   stage.value = 'handoff'
 }
@@ -74,6 +78,7 @@ function start() {
 
 /** «Продолжить»: ход той же команды с тем же объясняющим, прерванный ход начинается заново. */
 function resume() {
+  played = loadPlayed(game.value!.lang)
   stage.value = 'handoff'
 }
 
@@ -140,6 +145,7 @@ function nextWord() {
   const drawn = drawWord(pool, rules.levels, played)
   // Сыгранным слово становится в момент показа — и пропущенное, и последнее, и из сброшенного хода.
   played.add(drawn.word)
+  savePlayed(lang, played)
   word.value = drawn.word
 }
 

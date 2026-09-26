@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { clearPlayed } from '~/alias/played'
 import { useMessages } from '~/composables/useMessages'
 import { useProgress } from '~/composables/useProgress'
 import { FONT_SCALES, useSettings } from '~/composables/useSettings'
@@ -32,7 +33,10 @@ function removePlayer(index: number) {
 const hasPlayers = computed(() => settings.players.length > 0)
 
 function resetProgress() {
-  if (confirm(t.value.resetConfirm)) progress.clear()
+  if (!confirm(t.value.resetConfirm)) return
+  progress.clear()
+  // Сыгранные слова Alias — тоже с нуля; состав и сохранённая партия остаются.
+  clearPlayed()
 }
 </script>
 
