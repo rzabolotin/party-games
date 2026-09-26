@@ -1,6 +1,6 @@
 import { computed, reactive, watch } from 'vue'
 import { ALIAS_LEVELS, type AliasLevel, type AliasSetup, type AliasTeam, type Lang } from '~/types'
-import { levels, teamPresets } from '~/alias/levels'
+import { levels, teamEmojis, teamPresets } from '~/alias/levels'
 import { useSettings } from '~/composables/useSettings'
 
 export const ALIAS_MIN_PLAYERS = 4
@@ -85,10 +85,13 @@ export function useAliasSetup() {
     return setup.teams.length < MAX_TEAMS
   }
 
-  /** Добавляется пустая команда со следующими эмодзи и названием. */
+  /** Добавляется пустая команда со следующим названием; эмодзи — заготовки, а если он занят, первый свободный. */
   function addTeam() {
     if (!canAddTeam()) return
-    setup.teams.push(presetTeam(setup.teams.length, settings.lang))
+    const team = presetTeam(setup.teams.length, settings.lang)
+    const taken = setup.teams.map((other) => other.emoji)
+    if (taken.includes(team.emoji)) team.emoji = teamEmojis.find((emoji) => !taken.includes(emoji))!
+    setup.teams.push(team)
   }
 
   function canRemoveTeam(): boolean {
@@ -107,6 +110,19 @@ export function useAliasSetup() {
     const team = setup.teams[teamIndex]
     const trimmed = name.trim()
     if (team && trimmed !== '') team.name = trimmed
+  }
+
+  /** Эмодзи, занятый другой командой, не принимается: у каждой команды свой. */
+  function canSetEmoji(teamIndex: number, emoji: string): boolean {
+    return (
+      (teamEmojis as readonly string[]).includes(emoji) &&
+      !setup.teams.some((team, index) => index !== teamIndex && team.emoji === emoji)
+    )
+  }
+
+  function setEmoji(teamIndex: number, emoji: string) {
+    const team = setup.teams[teamIndex]
+    if (team && canSetEmoji(teamIndex, emoji)) team.emoji = emoji
   }
 
   /** Отметка уровня; порядок в списке — порядок справочника, чтобы сохранённое не зависело от кликов. */
@@ -131,6 +147,8 @@ export function useAliasSetup() {
     canRemoveTeam,
     removeTeam,
     renameTeam,
+    canSetEmoji,
+    setEmoji,
     toggleLevel,
   }
 }
@@ -208,13 +226,16 @@ function load(settingsPlayers: string[], lang: Lang): AliasSetup {
   return { teams, target, turnSeconds, levels: picked, skipPenalty, sound }
 }
 
-/** Команды проходят, только если целы все: число, эмодзи по местам, названия, имена без дублей. */
+/** Команды проходят, только если целы все: число, эмодзи из набора без повторов, названия, имена без дублей. */
 function parseTeams(value: unknown): AliasTeam[] | null {
   if (!Array.isArray(value) || value.length < MIN_TEAMS || value.length > MAX_TEAMS) return null
   const seen: string[] = []
+  const emojis: string[] = []
   const teams: AliasTeam[] = []
-  for (const [index, item] of value.entries()) {
-    if (!isRecord(item) || item.emoji !== teamPresets[index]!.emoji) return null
+  for (const item of value) {
+    if (!isRecord(item) || typeof item.emoji !== 'string') return null
+    if (!(teamEmojis as readonly string[]).includes(item.emoji) || emojis.includes(item.emoji)) return null
+    emojis.push(item.emoji)
     if (typeof item.name !== 'string' || item.name.trim() === '') return null
     if (!Array.isArray(item.players)) return null
     const players: string[] = []

@@ -28,8 +28,18 @@ export function getLevel(id: AliasLevel): AliasLevelInfo {
 
 /** Команды по местам: эмодзи и название по умолчанию. Их четыре — это и потолок числа команд. */
 export const teamPresets: { emoji: string; name: Record<Lang, string> }[] = [
-  { emoji: '🦊', name: { ru: 'Лисы', en: 'Foxes' } },
-  { emoji: '🐻', name: { ru: 'Медведи', en: 'Bears' } },
+  { emoji: '🐩', name: { ru: 'Леди', en: 'Ladies' } },
+  { emoji: '🐕', name: { ru: 'Бродяги', en: 'Tramps' } },
   { emoji: '🦉', name: { ru: 'Совы', en: 'Owls' } },
   { emoji: '🐺', name: { ru: 'Волки', en: 'Wolves' } },
 ]
+
+/** Из чего выбирается значок команды: 36 штук, сетка 6×6. Эмодзи всех заготовок — отсюда. */
+export const teamEmojis = [
+  '🐩', '🐕', '🦊', '🐻', '🦉', '🐺',
+  '🐱', '🐼', '🐸', '🦁', '🐙', '🦄',
+  '😎', '🤠', '🥷', '👻', '🤖', '👽',
+  '🍕', '🍩', '🍉', '🌮', '🥑', '🍒',
+  '🔥', '⚡', '🌈', '🌵', '🍀', '🌙',
+  '🚀', '👑', '🎩', '🎸', '⚽', '💎',
+] as const

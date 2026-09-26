@@ -86,6 +86,7 @@ export interface Messages {
   aliasMoveTo: string
   aliasMoveHint: string
   aliasTeamName: string
+  aliasTeamEmoji: string
   aliasRemoveTeam: string
   aliasAddTeam: string
   aliasShuffle: string
@@ -233,6 +234,7 @@ export const messages: Record<Lang, Messages> = {
     aliasMoveTo: '{name} — перевести в команду «{team}»',
     aliasMoveHint: 'Тап по игроку переводит его в следующую команду.',
     aliasTeamName: 'Название команды',
+    aliasTeamEmoji: 'Значок команды',
     aliasRemoveTeam: 'Удалить команду',
     aliasAddTeam: '+ команда',
     aliasShuffle: 'Перемешать',
@@ -376,6 +378,7 @@ export const messages: Record<Lang, Messages> = {
     aliasMoveTo: '{name} — move to team “{team}”',
     aliasMoveHint: 'Tap a player to move them to the next team.',
     aliasTeamName: 'Team name',
+    aliasTeamEmoji: 'Team icon',
     aliasRemoveTeam: 'Remove team',
     aliasAddTeam: '+ team',
     aliasShuffle: 'Shuffle',

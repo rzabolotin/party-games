@@ -13,7 +13,7 @@ import {
   turnDeltas,
   type AliasTurn,
 } from '~/alias/game'
-import { levels, words } from '~/alias/levels'
+import { levels, teamEmojis, words } from '~/alias/levels'
 import { loadPlayed, savePlayed } from '~/alias/played'
 import { ALIAS_MAX_PLAYERS, TARGETS, TURN_SECONDS, useAliasSetup } from '~/composables/useAliasSetup'
 import { useCountdown } from '~/composables/useCountdown'
@@ -39,6 +39,8 @@ const {
   canRemoveTeam,
   removeTeam,
   renameTeam,
+  canSetEmoji,
+  setEmoji,
   toggleLevel,
 } = useAliasSetup()
 
@@ -312,6 +314,24 @@ function commitName(teamIndex: number, event: Event) {
   input.value = setup.teams[teamIndex]?.name ?? ''
 }
 
+/** У какой команды открыт выбор значка; открыт не больше чем у одной. */
+const emojiPickerFor = ref<number | null>(null)
+
+function toggleEmojiPicker(teamIndex: number) {
+  emojiPickerFor.value = emojiPickerFor.value === teamIndex ? null : teamIndex
+}
+
+function pickEmoji(teamIndex: number, emoji: string) {
+  setEmoji(teamIndex, emoji)
+  emojiPickerFor.value = null
+}
+
+/** Удалённая команда не должна оставить открытым выбор значка у несуществующего места. */
+function removeLastTeam() {
+  if (emojiPickerFor.value === setup.teams.length - 1) emojiPickerFor.value = null
+  removeTeam()
+}
+
 const rulesItems = computed(() =>
   t.value.aliasRulesItems.map((item) => item.replace('{n}', String(setup.target))),
 )
@@ -330,9 +350,17 @@ const rulesItems = computed(() =>
         <section class="group">
           <h2 class="group-title">{{ t.aliasTeams }}</h2>
           <ul class="teams">
-            <li v-for="(team, teamIndex) in setup.teams" :key="team.emoji" class="team">
+            <li v-for="(team, teamIndex) in setup.teams" :key="teamIndex" class="team">
               <div class="team-head">
-                <span class="team-emoji" aria-hidden="true">{{ team.emoji }}</span>
+                <button
+                  type="button"
+                  class="team-emoji"
+                  :aria-label="`${t.aliasTeamEmoji}: ${team.name}`"
+                  :aria-expanded="emojiPickerFor === teamIndex"
+                  @click="toggleEmojiPicker(teamIndex)"
+                >
+                  {{ team.emoji }}
+                </button>
                 <input
                   class="team-name"
                   type="text"
@@ -350,9 +378,23 @@ const rulesItems = computed(() =>
                   type="button"
                   class="remove"
                   :aria-label="`${t.aliasRemoveTeam}: ${team.name}`"
-                  @click="removeTeam"
+                  @click="removeLastTeam"
                 >
                   ✕
+                </button>
+              </div>
+              <div v-if="emojiPickerFor === teamIndex" class="emoji-grid" role="group" :aria-label="t.aliasTeamEmoji">
+                <button
+                  v-for="emoji in teamEmojis"
+                  :key="emoji"
+                  type="button"
+                  class="emoji-option"
+                  :class="{ current: emoji === team.emoji }"
+                  :aria-pressed="emoji === team.emoji"
+                  :disabled="!canSetEmoji(teamIndex, emoji)"
+                  @click="pickEmoji(teamIndex, emoji)"
+                >
+                  {{ emoji }}
                 </button>
               </div>
               <ul v-if="team.players.length > 0" class="chips">
@@ -854,10 +896,54 @@ const rulesItems = computed(() =>
 
 .team-emoji {
   flex: none;
-  width: 36px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
   font-size: 26px;
   line-height: 1;
   text-align: center;
+  cursor: pointer;
+}
+
+.team-emoji:active,
+.team-emoji[aria-expanded='true'] {
+  background: var(--surface-active);
+}
+
+/* Выбор значка: 6×6, занятые другими командами приглушены и не нажимаются. */
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  margin: 4px 0 8px;
+}
+
+.emoji-option {
+  aspect-ratio: 1;
+  min-height: 44px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.emoji-option.current {
+  border-color: var(--accent);
+}
+
+.emoji-option:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.emoji-option:not(:disabled):active {
+  background: var(--surface-active);
 }
 
 /* Название — поле, которое выглядит как заголовок; рамка появляется только при правке. */
