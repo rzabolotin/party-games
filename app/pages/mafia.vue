@@ -113,7 +113,7 @@ const nightOrder = computed(() =>
       <div class="body">
         <section class="group">
           <div class="row">
-            <MafiaIcon name="players" class="row-icon" />
+            <GameIcon name="players" class="row-icon" />
             <span class="row-title">{{ t.mafiaPlayersCount }}</span>
             <span class="stepper">
               <button
@@ -150,7 +150,7 @@ const nightOrder = computed(() =>
                   :aria-expanded="expanded === role.id"
                   @click="toggleRole(role.id)"
                 >
-                  <MafiaIcon :name="role.id" class="row-icon" />
+                  <GameIcon :name="role.id" class="row-icon" />
                   <span class="row-title">{{ role.title[settings.lang] }}</span>
                   <span class="chevron" :class="{ open: expanded === role.id }" aria-hidden="true">›</span>
                 </button>
@@ -211,13 +211,13 @@ const nightOrder = computed(() =>
         >
           <span class="card-inner">
             <span class="card-face card-back">
-              <MafiaIcon name="moon" class="moon" />
+              <GameIcon name="moon" class="moon" />
               <span class="back-hint">{{ t.mafiaReveal }}</span>
             </span>
             <span v-if="currentRole" class="card-face card-front" :class="`faction-${currentRole.faction}`">
-              <MafiaIcon :name="currentRole.id" class="corner corner-start" />
-              <MafiaIcon :name="currentRole.id" class="corner corner-end" />
-              <MafiaIcon :name="currentRole.id" class="card-icon" />
+              <GameIcon :name="currentRole.id" class="corner corner-start" />
+              <GameIcon :name="currentRole.id" class="corner corner-end" />
+              <GameIcon :name="currentRole.id" class="card-icon" />
               <span class="card-name">{{ currentRole.title[settings.lang] }}</span>
               <span class="card-rule" aria-hidden="true" />
               <span class="card-tagline">{{ currentRole.tagline[settings.lang] }}</span>
@@ -247,7 +247,7 @@ const nightOrder = computed(() =>
           <ul class="roles">
             <li v-for="item in summary" :key="item.role.id" class="role" :class="`faction-${item.role.faction}`">
               <div class="row">
-                <MafiaIcon :name="item.role.id" class="row-icon" />
+                <GameIcon :name="item.role.id" class="row-icon" />
                 <span class="row-title">{{ item.role.title[settings.lang] }}</span>
                 <span class="value rest">{{ item.count }}</span>
               </div>
@@ -260,7 +260,7 @@ const nightOrder = computed(() =>
           <p class="night-intro">{{ t.mafiaNightIntro }}…</p>
           <ol class="night">
             <li v-for="role in nightOrder" :key="role.id" class="night-step" :class="`faction-${role.faction}`">
-              <MafiaIcon :name="role.id" class="row-icon" />
+              <GameIcon :name="role.id" class="row-icon" />
               <span class="row-title">{{ role.title[settings.lang] }}</span>
             </li>
           </ol>
