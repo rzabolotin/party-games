@@ -6,14 +6,17 @@ import ruHomeHabits from './ru/home-habits.ts'
 import ruTravel from './ru/travel.ts'
 import ruChildhood from './ru/childhood.ts'
 import ruFood from './ru/food.ts'
+import ruInternet from './ru/internet.ts'
 import ruFunnyDilemmas from './ru/funny-dilemmas.ts'
 import ruWhatIf from './ru/what-if.ts'
 import ruPhilosophy from './ru/philosophy.ts'
+import ruSuperpowers from './ru/superpowers.ts'
 import ruNhieAdventures from './ru/nhie-adventures.ts'
 import ruNhieChildhood from './ru/nhie-childhood.ts'
 import ruNhieAwkward from './ru/nhie-awkward.ts'
 import ruNhieFood from './ru/nhie-food.ts'
 import ruNhieLittleSins from './ru/nhie-little-sins.ts'
+import ruNhieFunny from './ru/nhie-funny.ts'
 import enWarmUp from './en/warm-up.ts'
 import enHomeHabits from './en/home-habits.ts'
 import enTravel from './en/travel.ts'
@@ -36,14 +39,17 @@ export const decks: Deck[] = [
   ruTravel,
   ruChildhood,
   ruFood,
+  ruInternet,
   ruFunnyDilemmas,
   ruWhatIf,
   ruPhilosophy,
+  ruSuperpowers,
   ruNhieAdventures,
   ruNhieChildhood,
   ruNhieAwkward,
   ruNhieFood,
   ruNhieLittleSins,
+  ruNhieFunny,
   // en
   enWarmUp,
   enHomeHabits,
