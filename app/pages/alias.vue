@@ -1,6 +1,18 @@
 <script setup lang="ts">
 import { drawWord, forgetExhausted } from '~/alias/draw'
-import { applyTurn, explainerOf, newGame, turnDeltas, type AliasTurn } from '~/alias/game'
+import {
+  applyTurn,
+  clearGame,
+  explainedTable,
+  explainerOf,
+  leaders,
+  loadGame,
+  newGame,
+  rematch,
+  saveGame,
+  turnDeltas,
+  type AliasTurn,
+} from '~/alias/game'
 import { levels, words } from '~/alias/levels'
 import { ALIAS_MAX_PLAYERS, TARGETS, TURN_SECONDS, useAliasSetup } from '~/composables/useAliasSetup'
 import { useCountdown } from '~/composables/useCountdown'
@@ -29,23 +41,59 @@ const {
   toggleLevel,
 } = useAliasSetup()
 
-// --- Стейт-машина: setup ⇄ rules; setup → handoff → turn → last → review → handoff; turn → handoff («Сбросить ход») ---
+// --- Стейт-машина ---
+// setup ⇄ rules; setup → handoff; resume → handoff | setup;
+// handoff → turn → last → review → handoff | over; turn → handoff («Сбросить ход»);
+// handoff → over («Закончить досрочно»); over → handoff («Реванш») | setup («Новая игра»)
 
-const stage = ref<'setup' | 'rules' | 'handoff' | 'turn' | 'last' | 'review'>('setup')
-/** Идёт партия: экран не гаснет, выход — только через подтверждение. */
-const inGame = computed(() => stage.value !== 'setup' && stage.value !== 'rules')
-useWakeLock(inGame)
+type Stage = 'setup' | 'rules' | 'resume' | 'handoff' | 'turn' | 'last' | 'review' | 'over'
 
-/** Партия живёт только в памяти, сохранения пока нет. */
-const game = ref<AliasGame | null>(null)
+/** Партия пишется в `koster.alias-game` между ходами; незаконченную при входе предлагается продолжить. */
+const saved = loadGame()
+const game = ref<AliasGame | null>(saved && !saved.finished ? saved : null)
+const stage = ref<Stage>(game.value ? 'resume' : 'setup')
+/** Экран не гаснет на всех этапах, кроме экрана начала и правил. */
+useWakeLock(computed(() => stage.value !== 'setup' && stage.value !== 'rules'))
+/** Идёт партия: выход — только через подтверждение. На «Продолжить?» и финале уйти можно сразу. */
+const inGame = computed(() => ['handoff', 'turn', 'last', 'review'].includes(stage.value))
+
 /** Слова, показанные в этой партии, — чтобы не повторялись; между партиями не помнятся. */
 let played = new Set<string>()
 
+function begin(next: AliasGame) {
+  game.value = next
+  played = new Set()
+  saveGame(next)
+  stage.value = 'handoff'
+}
+
 function start() {
   if (blocker.value) return
-  game.value = newGame(setup, settings.lang)
-  played = new Set()
+  begin(newGame(setup, settings.lang))
+}
+
+/** «Продолжить»: ход той же команды с тем же объясняющим, прерванный ход начинается заново. */
+function resume() {
   stage.value = 'handoff'
+}
+
+/** «Новая игра» с «Продолжить?» и с финала: партия стирается, дальше — экран начала. */
+function newGameFromScratch() {
+  clearGame()
+  game.value = null
+  stage.value = 'setup'
+}
+
+function playRematch() {
+  if (game.value) begin(rematch(game.value))
+}
+
+/** «Закончить досрочно» — с подтверждением; финал покажет текущего лидера или «Ничья». */
+function finishEarly() {
+  if (!game.value || !confirm(t.value.aliasFinishConfirm)) return
+  game.value.finished = true
+  saveGame(game.value)
+  stage.value = 'over'
 }
 
 /** Выход из партии — только через подтверждение: одно случайное касание не должно рушить счёт. */
@@ -215,12 +263,26 @@ function cycleLast() {
   lastTeam.value = current === null ? 0 : current + 1 < count ? current + 1 : null
 }
 
-/** «Подтвердить»: очки в счёт, ход — следующей команде. */
+/** «Подтвердить»: очки в счёт, ход — следующей команде или финал, если круг закрыт с победителем. */
 function confirmTurn() {
   if (!game.value || stage.value !== 'review') return
   applyTurn(game.value, turnRecord.value)
-  stage.value = 'handoff'
+  saveGame(game.value)
+  stage.value = game.value.finished ? 'over' : 'handoff'
 }
+
+// --- Финал ---
+
+const winners = computed(() => (game.value ? leaders(game.value) : []))
+const winnerTitle = computed(() => {
+  const team = winners.value.length === 1 ? game.value?.teams[winners.value[0]!] : null
+  return team ? t.value.aliasWinner.replace('{team}', teamLabel(team)) : t.value.aliasDraw
+})
+/** Итоговый счёт — по убыванию, при равенстве в порядке команд. */
+const finalScores = computed(() =>
+  game.value ? [...game.value.teams].sort((a, b) => b.score - a.score) : [],
+)
+const explainedRows = computed(() => (game.value ? explainedTable(game.value) : []))
 
 // --- Состав ---
 
@@ -455,6 +517,32 @@ const rulesItems = computed(() =>
       </div>
     </template>
 
+    <!-- Прерванная партия: продолжить с тем же счётом или начать с нуля -->
+    <template v-else-if="stage === 'resume' && game">
+      <header class="top">
+        <NuxtLink to="/" class="back">← {{ t.decks }}</NuxtLink>
+        <h1 class="title">{{ t.alias }}</h1>
+      </header>
+
+      <div class="body handoff">
+        <GameIcon name="alias" class="handoff-icon" />
+        <p class="turn-of">{{ t.aliasResumeTitle }}</p>
+        <p class="resume-score">
+          <template v-for="(team, index) in game.teams" :key="team.emoji">
+            <span v-if="index > 0" class="resume-sep" aria-hidden="true"> : </span>
+            <span class="resume-team">{{ teamLabel(team) }} <strong>{{ formatScore(team.score) }}</strong></span>
+          </template>
+        </p>
+      </div>
+
+      <footer class="bottom">
+        <div class="buttons">
+          <button type="button" class="action secondary" @click="newGameFromScratch">{{ t.aliasNewGame }}</button>
+          <button type="button" class="action primary" @click="resume">{{ t.aliasResume }}</button>
+        </div>
+      </footer>
+    </template>
+
     <!-- Перед ходом: телефон передают объясняющему, слов на экране нет -->
     <template v-else-if="stage === 'handoff' && game && currentTeam">
       <header class="top">
@@ -488,6 +576,7 @@ const rulesItems = computed(() =>
 
       <footer class="bottom">
         <button type="button" class="action primary" @click="ready">{{ t.aliasReady }}</button>
+        <button type="button" class="finish-early" @click="finishEarly">{{ t.aliasFinishEarly }}</button>
       </footer>
     </template>
 
@@ -600,6 +689,55 @@ const rulesItems = computed(() =>
           </span>
         </p>
         <button type="button" class="action primary" @click="confirmTurn">{{ t.aliasConfirm }}</button>
+      </footer>
+    </template>
+
+    <!-- Финал: победитель или ничья, счёт, кто сколько объяснил -->
+    <template v-else-if="stage === 'over' && game">
+      <header class="top">
+        <NuxtLink to="/" class="back">← {{ t.decks }}</NuxtLink>
+        <h1 class="title">{{ t.alias }}</h1>
+      </header>
+
+      <div class="body">
+        <p class="winner" role="status">{{ winnerTitle }}</p>
+
+        <section class="group">
+          <h2 class="group-title">{{ t.aliasFinalScore }}</h2>
+          <ul class="score-list">
+            <li
+              v-for="team in finalScores"
+              :key="team.emoji"
+              class="score"
+              :class="{ current: winners.length === 1 && game.teams[winners[0]!] === team }"
+            >
+              <span class="score-emoji" aria-hidden="true">{{ team.emoji }}</span>
+              <span class="score-name">{{ team.name }}</span>
+              <span class="score-value">{{ formatScore(team.score) }}</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="group">
+          <h2 class="group-title">{{ t.aliasExplainedTitle }}</h2>
+          <ul class="score-list">
+            <li v-for="row in explainedRows" :key="row.name" class="score explained">
+              <span class="score-emoji" aria-hidden="true">{{ game.teams[row.team]!.emoji }}</span>
+              <span class="score-name">
+                {{ row.name }}
+                <span v-if="row.best" class="best">🏅 {{ t.aliasBest }}</span>
+              </span>
+              <span class="score-value">{{ row.count }}</span>
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <footer class="bottom">
+        <div class="buttons">
+          <button type="button" class="action secondary" @click="newGameFromScratch">{{ t.aliasNewGame }}</button>
+          <button type="button" class="action primary" @click="playRematch">{{ t.aliasRematch }}</button>
+        </div>
       </footer>
     </template>
   </main>
@@ -1156,6 +1294,65 @@ const rulesItems = computed(() =>
   font-size: calc(16px * var(--font-scale));
   font-weight: 600;
   line-height: 1.35;
+}
+
+/* Второстепенное действие под «Я готов»: мелко, чтобы не нажать вместо него. */
+.finish-early {
+  align-self: center;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* --- Продолжить партию --- */
+
+.resume-score {
+  margin: 16px 0 0;
+  font-size: calc(20px * var(--font-scale));
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.resume-team {
+  white-space: nowrap;
+}
+
+.resume-team strong {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.resume-sep {
+  color: var(--muted);
+}
+
+/* --- Финал --- */
+
+.winner {
+  margin: 8px 0 24px;
+  font-size: calc(28px * var(--font-scale));
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* Имя и отметка «Лучший» переносятся, а не обрезаются: отметка — главное в строке лидера. */
+.explained .score-name {
+  white-space: normal;
+}
+
+.best {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
 }
 
 /* --- Ход --- */

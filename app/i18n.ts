@@ -127,6 +127,18 @@ export interface Messages {
   /** Подпись для чтения с экрана у последнего слова: {word} — слово, {team} — кому очко. */
   aliasLastTo: string
   aliasConfirm: string
+  aliasFinishEarly: string
+  aliasFinishConfirm: string
+  /** {team} — эмодзи и название команды-победителя. */
+  aliasWinner: string
+  aliasDraw: string
+  aliasFinalScore: string
+  aliasExplainedTitle: string
+  aliasBest: string
+  aliasRematch: string
+  aliasNewGame: string
+  aliasResumeTitle: string
+  aliasResume: string
 }
 
 /** Названия языков — на самом языке, чтобы переключатель читался при любом текущем. */
@@ -253,7 +265,7 @@ export const messages: Record<Lang, Messages> = {
     aliasReminder: 'Нельзя: однокоренные, жесты, перевод',
     aliasReady: 'Я готов',
     aliasExit: 'Выйти',
-    aliasExitConfirm: 'Прервать партию? Счёт не сохранится.',
+    aliasExitConfirm: 'Выйти из партии? Счёт сохранится, её можно будет продолжить. Незаконченный ход не засчитается.',
     aliasResetTurn: 'Сбросить ход',
     aliasResetConfirm: 'Сбросить ход? Очки этого хода не засчитаются, ход начнётся заново.',
     aliasTimeLeft: 'Осталось',
@@ -267,6 +279,17 @@ export const messages: Record<Lang, Messages> = {
     aliasReviewHint: 'Тап по слову меняет отметку.',
     aliasLastTo: '{word} — очко: {team}',
     aliasConfirm: 'Подтвердить',
+    aliasFinishEarly: 'Закончить досрочно',
+    aliasFinishConfirm: 'Закончить партию сейчас? Победит команда, которая ведёт.',
+    aliasWinner: '🏆 Победили {team}!',
+    aliasDraw: 'Ничья',
+    aliasFinalScore: 'Итоговый счёт',
+    aliasExplainedTitle: 'Кто сколько объяснил',
+    aliasBest: 'Лучший объясняющий',
+    aliasRematch: 'Реванш',
+    aliasNewGame: 'Новая игра',
+    aliasResumeTitle: 'Продолжить партию?',
+    aliasResume: 'Продолжить',
   },
   en: {
     deckTypes: {
@@ -385,7 +408,7 @@ export const messages: Record<Lang, Messages> = {
     aliasReminder: 'No same-root words, gestures or translation',
     aliasReady: 'I’m ready',
     aliasExit: 'Exit',
-    aliasExitConfirm: 'Quit the game? The score will not be saved.',
+    aliasExitConfirm: 'Leave the game? The score is saved and you can continue later. An unfinished turn will not count.',
     aliasResetTurn: 'Restart turn',
     aliasResetConfirm: 'Restart the turn? Its points will not count, and the turn starts over.',
     aliasTimeLeft: 'Time left',
@@ -399,5 +422,16 @@ export const messages: Record<Lang, Messages> = {
     aliasReviewHint: 'Tap a word to change its mark.',
     aliasLastTo: '{word} — point: {team}',
     aliasConfirm: 'Confirm',
+    aliasFinishEarly: 'End game early',
+    aliasFinishConfirm: 'End the game now? The team in the lead wins.',
+    aliasWinner: '🏆 {team} win!',
+    aliasDraw: 'It’s a draw',
+    aliasFinalScore: 'Final score',
+    aliasExplainedTitle: 'Words explained',
+    aliasBest: 'Best explainer',
+    aliasRematch: 'Rematch',
+    aliasNewGame: 'New game',
+    aliasResumeTitle: 'Continue the game?',
+    aliasResume: 'Continue',
   },
 }
