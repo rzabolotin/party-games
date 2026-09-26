@@ -8,7 +8,18 @@ import ru from './words/ru.ts'
  * Справочник тем «Шпиона»: набор общий для обоих языков, как у ролей «Мафии».
  * Порядок массива — порядок на экране настроек.
  */
-export const themes: SpyTheme[] = [{ id: 'places', title: { ru: 'Места', en: 'Places' } }]
+export const themes: SpyTheme[] = [
+  { id: 'places', title: { ru: 'Места', en: 'Places' } },
+  { id: 'animals', title: { ru: 'Животные', en: 'Animals' } },
+  { id: 'professions', title: { ru: 'Профессии', en: 'Jobs' } },
+  { id: 'countries', title: { ru: 'Страны', en: 'Countries' } },
+  { id: 'cities', title: { ru: 'Города мира', en: 'World cities' } },
+  { id: 'sports', title: { ru: 'Спорт', en: 'Sports' } },
+  { id: 'fairy-tales', title: { ru: 'Сказочные персонажи', en: 'Fairy tale characters' } },
+  { id: 'cartoons', title: { ru: 'Герои мультфильмов', en: 'Cartoon characters' } },
+  { id: 'superheroes', title: { ru: 'Супергерои и суперзлодеи', en: 'Superheroes and villains' } },
+  { id: 'home', title: { ru: 'Предметы в доме', en: 'Things at home' } },
+]
 
 /**
  * Слова по языкам. Это не переводы друг друга, как и колоды: персонажи и мультфильмы
