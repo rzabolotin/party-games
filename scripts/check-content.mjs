@@ -171,10 +171,9 @@ for (const lang of LANGS) {
   for (const theme of themes) {
     const where = `слова ${lang}/${theme.id}`
     const list = own[theme.id]
-    // Пока английских слов для новых тем нет (тикет 05), тема без слов на языке допустима:
-    // интерфейс её на этом языке просто не показывает. Совсем без слов тема быть не может.
+    // Темы одинаковые в обоих языках: у каждой темы справочника слова есть на каждом языке.
     if (!Array.isArray(list)) {
-      if (!LANGS.some((other) => Array.isArray(words[other]?.[theme.id]))) fail(where, 'нет слов ни на одном языке')
+      fail(where, 'нет слов на этом языке')
       continue
     }
     if (list.length < MIN_WORDS || list.length > MAX_WORDS) {
