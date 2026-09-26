@@ -10,6 +10,8 @@ const t = useMessages()
 const route = useRoute()
 const deckId = String(route.params.deckId)
 const deck = getDeck(deckId)
+/** Назад — в раздел колоды, к выбору темы; без колоды — на главную. */
+const sectionPath = deck ? `/decks/${deck.type}` : '/'
 const { current, shownCount, total, finished, next, reset } = useDeckProgress(deckId)
 const reader = useReader()
 // Пока открыта карточка, экран не гаснет; в списке колод и настройках блокировки нет.
@@ -100,7 +102,7 @@ function onPointerCancel() {
 <template>
   <main class="screen">
     <header class="top">
-      <NuxtLink to="/" class="back">← {{ t.decks }}</NuxtLink>
+      <NuxtLink :to="sectionPath" class="back">← {{ deck ? t.back : t.decks }}</NuxtLink>
       <template v-if="deck">
         <h1 class="deck-title">{{ deck.title }}</h1>
         <span class="counter">{{ shownCount }} / {{ total }}</span>
@@ -126,7 +128,7 @@ function onPointerCancel() {
           <div v-if="finished" class="end">
             <p class="question size-l">{{ t.finished }}</p>
             <button type="button" class="action primary" @click="restart">{{ t.restart }}</button>
-            <NuxtLink to="/" class="action secondary">{{ t.toDecks }}</NuxtLink>
+            <NuxtLink :to="sectionPath" class="action secondary">{{ t.toDecks }}</NuxtLink>
           </div>
           <div v-else-if="stage === 'reader'" class="reader">
             <p class="reader-label">{{ t.nextReader }}</p>
