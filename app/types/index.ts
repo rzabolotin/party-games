@@ -133,3 +133,28 @@ export interface AliasGame {
   explained: Record<string, number>
   finished: boolean
 }
+
+/** Тон данетки: мрачные — про смерти и преступления, по умолчанию не выдаются. */
+export const DANETKA_TONES = ['light', 'dark'] as const
+export type DanetkaTone = (typeof DANETKA_TONES)[number]
+
+export interface Danetka {
+  /** Стабилен навсегда: по нему хранится прогресс; удалённый id не переиспользуется. */
+  id: number
+  title: string
+  tone: DanetkaTone
+  story: string
+  answer: string
+  /** Откуда взята; в интерфейсе не показывается. */
+  source: string
+}
+
+/** Состояние «Данеток» — ровно в таком виде лежит в localStorage. */
+export interface DanetkiState {
+  /** Мрачные истории в наборе, по умолчанию false. */
+  dark: boolean
+  /** id историй, у которых открывали ответ. */
+  played: Record<Lang, number[]>
+  /** Текущая история языка; null — не выдана. */
+  current: Record<Lang, number | null>
+}

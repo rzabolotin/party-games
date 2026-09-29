@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { clearPlayed } from '~/alias/played'
+import { clearDanetki } from '~/composables/useDanetki'
 import { useMessages } from '~/composables/useMessages'
 import { useProgress } from '~/composables/useProgress'
 import { FONT_SCALES, useSettings } from '~/composables/useSettings'
@@ -37,6 +38,8 @@ function resetProgress() {
   progress.clear()
   // Сыгранные слова Alias — тоже с нуля; состав и сохранённая партия остаются.
   clearPlayed()
+  // Данетки — целиком: разгаданные, текущие истории и переключатель мрачных.
+  clearDanetki()
 }
 </script>
 
