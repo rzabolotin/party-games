@@ -16,15 +16,20 @@ const MAX_WORD = 24
 /** Слова Alias: сколько на каждом уровне каждого языка. */
 const MIN_ALIAS_WORDS = 350
 const MAX_ALIAS_WORDS = 450
+/** Данетки: история с открытым ответом должна читаться на iPhone SE при «Огромном» шрифте с прокруткой середины. */
+const MAX_DANETKA_TITLE = 40
+const MAX_DANETKA_STORY = 260
+const MAX_DANETKA_ANSWER = 240
 
 const DECKS_DIR = new URL('../app/decks/', import.meta.url)
 const { decks } = await import(new URL('index.ts', DECKS_DIR).href)
-const { LANGS, DECK_TYPES, FACTIONS, ROLE_IDS, THEME_IDS, ALIAS_LEVELS } = await import(
+const { LANGS, DECK_TYPES, FACTIONS, ROLE_IDS, THEME_IDS, ALIAS_LEVELS, DANETKA_TONES } = await import(
   new URL('../app/types/index.ts', import.meta.url).href
 )
 const { roles } = await import(new URL('../app/mafia/roles.ts', import.meta.url).href)
 const { themes, words } = await import(new URL('../app/spy/themes.ts', import.meta.url).href)
 const { levels: aliasLevels, words: aliasWords } = await import(new URL('../app/alias/levels.ts', import.meta.url).href)
+const { stories: danetki } = await import(new URL('../app/danetki/stories.ts', import.meta.url).href)
 
 const problems = []
 const fail = (where, what) => problems.push(`${where}: ${what}`)
@@ -250,6 +255,52 @@ for (const lang of LANGS) {
   }
 }
 
+// --- Данетки: у каждого языка свой список, пустой допустим — тогда режим скрыт ---
+
+for (const lang of LANGS) {
+  const list = danetki[lang]
+  if (!Array.isArray(list)) {
+    fail(`данетки ${lang}`, 'не массив')
+    continue
+  }
+
+  const danetkaIds = new Set()
+  /** Уже встреченные названия и тексты языка: нормализованный текст → где встретился впервые. */
+  const seenTitles = new Map()
+  const seenStories = new Map()
+  for (const [i, danetka] of list.entries()) {
+    const where = `данетка ${lang} #${i + 1}${Number.isInteger(danetka.id) ? ` (id ${danetka.id})` : ''}`
+    if (!Number.isInteger(danetka.id) || danetka.id <= 0) fail(where, `id «${danetka.id}» — не целое положительное`)
+    else if (danetkaIds.has(danetka.id)) fail(where, 'id повторяется')
+    else danetkaIds.add(danetka.id)
+
+    if (!DANETKA_TONES.includes(danetka.tone)) fail(where, `неизвестный tone «${danetka.tone}»`)
+
+    for (const [field, limit] of [
+      ['title', MAX_DANETKA_TITLE],
+      ['story', MAX_DANETKA_STORY],
+      ['answer', MAX_DANETKA_ANSWER],
+      ['source', Infinity],
+    ]) {
+      const text = danetka[field]
+      if (typeof text !== 'string' || !text.trim()) fail(where, `пустой ${field}`)
+      else if (length(text) > limit) fail(where, `${field}: длина ${length(text)} > ${limit}`)
+    }
+
+    for (const [field, seenTexts] of [
+      ['title', seenTitles],
+      ['story', seenStories],
+    ]) {
+      const text = danetka[field]
+      if (typeof text !== 'string' || !text.trim()) continue
+      const key = normalize(text)
+      const first = seenTexts.get(key)
+      if (first) fail(where, `${field} повторяет ${first}`)
+      else seenTexts.set(key, where)
+    }
+  }
+}
+
 // --- Итог ---
 
 if (problems.length > 0) {
@@ -263,4 +314,11 @@ const stats = LANGS.map((lang) => {
   const questions = own.reduce((sum, deck) => sum + deck.questions.length, 0)
   return `${lang}: колод ${own.length}, вопросов ${questions}`
 })
-console.log(`✓ Контент в порядке — ${stats.join('; ')}; ролей «Мафии» ${roles.length}; тем «Шпиона» ${themes.length}; уровней Alias ${aliasLevels.length}`)
+const danetkiStats = LANGS.map((lang) => {
+  const list = danetki[lang]
+  const dark = list.filter((danetka) => danetka.tone === 'dark').length
+  return `${lang} ${list.length} (светлых ${list.length - dark}, мрачных ${dark})`
+})
+console.log(
+  `✓ Контент в порядке — ${stats.join('; ')}; ролей «Мафии» ${roles.length}; тем «Шпиона» ${themes.length}; уровней Alias ${aliasLevels.length}; данеток: ${danetkiStats.join(', ')}`,
+)

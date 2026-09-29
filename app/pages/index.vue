@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { useMessages } from '~/composables/useMessages'
+import { useSettings } from '~/composables/useSettings'
+import { hasStories } from '~/danetki/stories'
 import { deckTypeEmoji } from '~/decks'
 import { APP_NAME } from '~/i18n'
 import { DECK_TYPES } from '~/types'
 
 const t = useMessages()
+const settings = useSettings()
 </script>
 
 <template>
@@ -30,6 +33,12 @@ const t = useMessages()
       <li>
         <MenuRow to="/alias" :title="t.alias" :note="t.aliasSubtitle">
           <template #icon><GameIcon name="alias" /></template>
+        </MenuRow>
+      </li>
+      <!-- Данетки есть не на всех языках: без историй строка не показывается. -->
+      <li v-if="hasStories(settings.lang)">
+        <MenuRow to="/danetki" :title="t.danetki" :note="t.danetkiSubtitle">
+          <template #icon><GameIcon name="danetki" /></template>
         </MenuRow>
       </li>
     </ul>

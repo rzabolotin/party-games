@@ -140,6 +140,32 @@ export interface Messages {
   aliasNewGame: string
   aliasResumeTitle: string
   aliasResume: string
+  danetki: string
+  danetkiSubtitle: string
+  danetkiRulesTitle: string
+  /** Пункты «Как играть» на экране начала. */
+  danetkiRules: string[]
+  danetkiDark: string
+  danetkiDarkNote: string
+  /** Экран начала: {n} — неразгаданных в наборе, {m} — размер набора. */
+  danetkiLeft: string
+  danetkiStart: string
+  danetkiContinue: string
+  /** Кнопка в шапке истории: назад к экрану начала с правилами и переключателем. */
+  danetkiToStart: string
+  /** Счётчик в шапке истории для чтения с экрана: {n} — разгадано, {m} — размер набора. */
+  danetkiSolved: string
+  danetkiDarkMark: string
+  danetkiReveal: string
+  danetkiAnswer: string
+  danetkiHide: string
+  danetkiNext: string
+  danetkiNextConfirm: string
+  danetkiDone: string
+  /** Подсказка на финале, когда мрачные выключены; {n} — сколько там неразгаданных. */
+  danetkiDarkLeft: string
+  danetkiRestart: string
+  danetkiNoStories: string
 }
 
 /** Названия языков — на самом языке, чтобы переключатель читался при любом текущем. */
@@ -292,6 +318,32 @@ export const messages: Record<Lang, Messages> = {
     aliasNewGame: 'Новая игра',
     aliasResumeTitle: 'Продолжить партию?',
     aliasResume: 'Продолжить',
+    danetki: 'Данетки',
+    danetkiSubtitle: 'Загадочные истории',
+    danetkiRulesTitle: 'Как играть',
+    danetkiRules: [
+      'Ведущий читает историю вслух, а ответ смотрит тайком.',
+      'Остальные задают вопросы, на которые можно ответить «да» или «нет».',
+      'Ведущий отвечает только «да», «нет» или «неважно».',
+      'Разгадали или сдались — ведущий читает ответ и передаёт телефон следующему.',
+    ],
+    danetkiDark: 'Мрачные истории',
+    danetkiDarkNote: 'Про смерти и преступления',
+    danetkiLeft: 'Осталось историй: {n} из {m}',
+    danetkiStart: 'Начать',
+    danetkiContinue: 'Продолжить',
+    danetkiToStart: 'Правила',
+    danetkiSolved: 'Разгадано {n} из {m}',
+    danetkiDarkMark: 'Мрачная история',
+    danetkiReveal: 'Тапни, чтобы увидеть ответ',
+    danetkiAnswer: 'Ответ',
+    danetkiHide: 'Тапни, чтобы закрыть',
+    danetkiNext: 'Следующая история',
+    danetkiNextConfirm: 'Ответ ещё не открывали. Перейти к следующей? Эта история вернётся в колоду.',
+    danetkiDone: 'Истории закончились',
+    danetkiDarkLeft: 'Включите мрачные истории — там ещё {n}',
+    danetkiRestart: 'Начать заново',
+    danetkiNoStories: 'Историй на этом языке пока нет.',
   },
   en: {
     deckTypes: {
@@ -436,5 +488,31 @@ export const messages: Record<Lang, Messages> = {
     aliasNewGame: 'New game',
     aliasResumeTitle: 'Continue the game?',
     aliasResume: 'Continue',
+    danetki: 'Lateral puzzles',
+    danetkiSubtitle: 'Mystery stories',
+    danetkiRulesTitle: 'How to play',
+    danetkiRules: [
+      'The host reads the story out loud and peeks at the answer in secret.',
+      'Everyone else asks questions that can be answered “yes” or “no”.',
+      'The host only answers “yes”, “no” or “doesn’t matter”.',
+      'Solved it or gave up — the host reads the answer and passes the phone on.',
+    ],
+    danetkiDark: 'Dark stories',
+    danetkiDarkNote: 'About death and crime',
+    danetkiLeft: 'Stories left: {n} of {m}',
+    danetkiStart: 'Start',
+    danetkiContinue: 'Continue',
+    danetkiToStart: 'Rules',
+    danetkiSolved: 'Solved {n} of {m}',
+    danetkiDarkMark: 'Dark story',
+    danetkiReveal: 'Tap to see the answer',
+    danetkiAnswer: 'Answer',
+    danetkiHide: 'Tap to hide',
+    danetkiNext: 'Next story',
+    danetkiNextConfirm: 'The answer hasn’t been opened yet. Go to the next one? This story will go back into the deck.',
+    danetkiDone: 'No stories left',
+    danetkiDarkLeft: 'Turn on dark stories — {n} more there',
+    danetkiRestart: 'Start over',
+    danetkiNoStories: 'No stories in this language yet.',
   },
 }
