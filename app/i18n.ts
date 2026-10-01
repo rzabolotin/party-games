@@ -178,7 +178,7 @@ export const messages: Record<Lang, Messages> = {
   ru: {
     deckTypes: {
       'most-likely': 'Кто из нас скорее всего…',
-      'would-you-rather': 'Что бы ты выбрал',
+      'would-you-rather': 'Что выберешь?',
       'never-have-i': 'Я никогда не…',
     },
     adult: 'Для взрослых',
