@@ -15,7 +15,7 @@ export default {
     'Never have I ever lied about my age.',
     'Never have I ever read the terms and conditions.',
     'Never have I ever called in sick when I wasn’t.',
-    'Never have I ever texted an ex late at night.',
+    'Never have I ever borrowed someone’s charger without asking.',
     'Never have I ever fallen asleep with the TV on.',
     'Never have I ever binged a whole season in one night.',
     'Never have I ever skipped a concert I already had a ticket for.',
