@@ -1,5 +1,5 @@
 // Только type-импорты: правила партии Quest без Vue и хранилища.
-import type { QuestGame, QuestLineup, QuestResult, QuestTale, QuestTexts } from '~/types'
+import type { QuestFinaleKind, QuestGame, QuestLineup, QuestResult, QuestRoleId, QuestTale, QuestTexts } from '~/types'
 
 /** Добро побеждает после стольких успехов. */
 export const GOOD_WINS = 3
@@ -31,6 +31,34 @@ export function decided(game: Pick<QuestGame, 'quests' | 'players'>): 'good' | '
   if (good >= GOOD_WINS) return 'good'
   if (evil >= evilThreshold(game.players)) return 'evil'
   return null
+}
+
+/** Кто победил в каждом финале. «Все ветераны злые» — победа добра: злу нельзя вести все походы самому. */
+export const FINALE_WINNER: Record<QuestFinaleKind, 'good' | 'evil'> = {
+  goodQuests: 'good',
+  huntWon: 'evil',
+  huntLost: 'good',
+  lastChanceGood: 'good',
+  lastChanceEvil: 'evil',
+  veteransEvil: 'good',
+}
+
+/** Финальный совет длится 5 минут. */
+export const COUNCIL_SECONDS = 5 * 60
+
+/** Роли с вмешательством в Последний шанс — их строки подсказки показываются, только если роль в составе. */
+export const LAST_CHANCE_ROLES = ['duke', 'archduke', 'duke-alt', 'apprentice'] as const satisfies readonly QuestRoleId[]
+
+/** Финал: случайный вариант текста; он сохраняется в партии, чтобы после перезагрузки звучал тот же. */
+export function finale(texts: QuestTexts, kind: QuestFinaleKind): NonNullable<QuestGame['finale']> {
+  return { kind, variant: randomIndex(texts.finales[kind].length) }
+}
+
+/** Вставки в финал по ролям состава, в порядке справочника. */
+export function finaleRoleLines(texts: QuestTexts, roles: QuestLineup): string[] {
+  return (Object.keys(roles) as QuestRoleId[])
+    .filter((id) => roles[id] > 0)
+    .flatMap((id) => texts.finaleRoleLines[id] ?? [])
 }
 
 /** Новая партия: вступление, походов ещё нет. */

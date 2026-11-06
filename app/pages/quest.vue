@@ -1,11 +1,24 @@
 <script setup lang="ts">
 import { useMessages } from '~/composables/useMessages'
+import { useCountdown } from '~/composables/useCountdown'
 import { useQuest } from '~/composables/useQuest'
 import { useSettings } from '~/composables/useSettings'
 import { useWakeLock } from '~/composables/useWakeLock'
-import { GOOD_WINS, decided, evilThreshold, outcomeText, score } from '~/quest/game'
+import {
+  COUNCIL_SECONDS,
+  FINALE_WINNER,
+  GOOD_WINS,
+  LAST_CHANCE_ROLES,
+  decided,
+  evilThreshold,
+  finaleRoleLines,
+  outcomeText,
+  score,
+} from '~/quest/game'
+import { HIDDEN_MAX_PLAYERS } from '~/quest/lineups'
 import { questRoles } from '~/quest/roles'
 import { findIntro, findTale, questTexts } from '~/quest/texts'
+import { playCouncil, playFinale, playOutcome, playSignal, unlockSound } from '~/sound'
 import type { QuestRoleId } from '~/types'
 
 const t = useMessages()
@@ -30,6 +43,10 @@ const {
   enterFails,
   cancelOutcome,
   leaveOutcome,
+  toLastChance,
+  huntResult,
+  lastChanceResult,
+  replay,
   endGame,
 } = useQuest()
 
@@ -41,7 +58,10 @@ const available = computed(() => texts.value !== undefined)
 // setup → game; resume → game | setup. Внутри game — фазы партии из `koster.quest.game`:
 // intro ─Дальше─▶ quest ─ввод─▶ outcome ─Отменить─▶ quest
 // outcome ─Передать лидерство─▶ handoff ─Я новый лидер─▶ quest
-// outcome ─3 успеха─▶ finale(goodQuests); outcome ─порог провалов─▶ council (пока заглушка)
+// outcome ─3 успеха─▶ finale(goodQuests); outcome ─порог провалов─▶ council
+// council ─Охота─▶ (ввод «угадал / нет») ─▶ finale(huntWon | huntLost)
+// council ─К Последнему шансу или время вышло─▶ lastChance ─итог─▶ finale(lastChanceGood | lastChanceEvil | veteransEvil)
+// finale ─Новая партия─▶ intro (тот же состав) | ─К настройке─▶ setup
 
 /** Незаконченная партия при входе — сначала «Продолжить партию?», как в Alias. */
 const stage = ref<'setup' | 'resume' | 'game'>(quest.game ? 'resume' : 'setup')
@@ -51,6 +71,7 @@ useWakeLock(computed(() => stage.value === 'game'))
 
 function start() {
   if (!texts.value) return
+  unlockSound()
   startGame(texts.value)
   stage.value = 'game'
 }
@@ -81,12 +102,17 @@ const finaleText = computed(() => {
   const finale = game.value?.finale
   return finale && texts.value ? (texts.value.finales[finale.kind][finale.variant] ?? texts.value.finales[finale.kind][0]) : ''
 })
+/** Вставки в финал по ролям состава партии. */
+const finaleLines = computed(() => (game.value && texts.value ? finaleRoleLines(texts.value, game.value.roles) : []))
+const finaleSide = computed(() => (game.value?.finale ? FINALE_WINNER[game.value.finale.kind] : 'good'))
 
 /** Переключатель «нужно 2 провала» — на каждый поход заново; «Отменить» возвращает введённое. */
 const doubleFail = ref(false)
 
+/** Звук разблокируется каждым тапом партии: после перезагрузки первым может оказаться любой. */
 function toQuest() {
   if (!texts.value) return
+  unlockSound()
   nextQuest(texts.value)
   doubleFail.value = false
 }
@@ -96,8 +122,108 @@ function cancel() {
   cancelOutcome()
 }
 
+function enter(fails: number) {
+  unlockSound()
+  enterFails(fails, doubleFail.value)
+  if (result.value) playOutcome(result.value.success)
+}
+
 function proceed() {
-  if (texts.value) leaveOutcome(texts.value)
+  if (!texts.value) return
+  unlockSound()
+  leaveOutcome(texts.value)
+  if (game.value?.phase === 'council') playCouncil()
+  else if (game.value?.phase === 'finale') playFinale(finaleSide.value === 'good')
+}
+
+function resume() {
+  unlockSound()
+  stage.value = 'game'
+}
+
+// --- Финальный совет ---
+
+/** Охотник объявил Охоту: вместо кнопок совета — ввод «угадал / не угадал». Живёт только на экране. */
+const hunting = ref(false)
+const council = useCountdown(COUNCIL_SECONDS)
+const councilClock = computed(() => {
+  const left = council.secondsLeft.value
+  return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`
+})
+
+/** Таймер идёт, пока на экране совет; после перезагрузки — снова с полных 5 минут. */
+watch(
+  () => stage.value === 'game' && game.value?.phase === 'council',
+  (inCouncil) => {
+    hunting.value = false
+    if (inCouncil) council.start()
+    else council.stop()
+  },
+  { immediate: true },
+)
+
+/** Время вышло: сигнал, и стол идёт к Последнему шансу — если только Охота уже не объявлена. */
+council.onEnd(() => {
+  playSignal()
+  if (!hunting.value) toLastChance()
+})
+
+function startHunt() {
+  unlockSound()
+  hunting.value = true
+}
+
+function endHunt(guessed: boolean) {
+  if (!texts.value) return
+  unlockSound()
+  huntResult(texts.value, guessed)
+  playFinale(finaleSide.value === 'good')
+}
+
+function lastChance() {
+  unlockSound()
+  toLastChance()
+}
+
+/** Правила Охоты для этой партии: про карту рубашкой вверх и про герцогов — только если это про нас. */
+const huntRules = computed(() => {
+  const rules = t.value.questHuntRules
+  const roles = game.value?.roles
+  return [
+    ...rules.base,
+    ...((game.value?.players ?? 0) <= HIDDEN_MAX_PLAYERS ? [rules.hidden] : []),
+    ...(roles && (roles.duke > 0 || roles.archduke > 0) ? [rules.dukes] : []),
+    rules.verdict,
+  ]
+})
+
+/** Подсказка Последнего шанса: строки вмешательства — только для ролей из состава. */
+const lastChanceRules = computed(() => {
+  const rules = t.value.questLastChanceRules
+  const roles = game.value?.roles
+  return [
+    rules.point,
+    ...LAST_CHANCE_ROLES.filter((id) => (roles?.[id] ?? 0) > 0).map((id) => rules.roles[id]),
+    rules.verdict,
+    rules.veterans,
+  ]
+})
+
+const LAST_CHANCE_RESULTS = ['lastChanceGood', 'lastChanceEvil', 'veteransEvil'] as const
+
+function endLastChance(kind: (typeof LAST_CHANCE_RESULTS)[number]) {
+  if (!texts.value) return
+  unlockSound()
+  lastChanceResult(texts.value, kind)
+  playFinale(finaleSide.value === 'good')
+}
+
+/** «Новая партия» после финала: тот же состав, сразу вступление. */
+function playAgain() {
+  if (!texts.value) return
+  unlockSound()
+  replay(texts.value)
+  doubleFail.value = false
 }
 
 const FAIL_OPTIONS = [0, 1, 2, 3] as const
@@ -284,7 +410,7 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
 
       <footer class="bottom">
         <button type="button" class="action secondary" @click="toSetup">{{ t.questNewGame }}</button>
-        <button type="button" class="action primary" @click="stage = 'game'">{{ t.questResume }}</button>
+        <button type="button" class="action primary" @click="resume">{{ t.questResume }}</button>
       </footer>
     </template>
 
@@ -357,7 +483,7 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
               type="button"
               class="action fail-button"
               :class="fails === 0 ? 'secondary' : 'primary'"
-              @click="enterFails(fails, doubleFail)"
+              @click="enter(fails)"
             >
               {{ fails === 3 ? t.questFailsMore : fails }}
             </button>
@@ -378,26 +504,80 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
         </footer>
       </template>
 
-      <!-- Финал -->
-      <template v-else-if="game.phase === 'finale'">
+      <!-- Финальный совет: текст, таймер на 5 минут; Охота или Последний шанс -->
+      <template v-else-if="game.phase === 'council'">
         <div class="body">
-          <h2 class="tale-title">{{ t.questGoodWins }}</h2>
-          <p class="reading">{{ finaleText }}</p>
+          <template v-if="hunting">
+            <h2 class="tale-title">{{ t.questHuntTitle }}</h2>
+            <ul class="rules">
+              <li v-for="rule in huntRules" :key="rule">{{ rule }}</li>
+            </ul>
+          </template>
+          <template v-else>
+            <h2 class="tale-title">{{ t.questCouncil }}</h2>
+            <p class="reading">{{ texts?.council }}</p>
+            <p class="note">{{ t.questCouncilHint }}</p>
+          </template>
+          <p
+            class="clock"
+            :class="{ over: council.secondsLeft.value === 0 }"
+            role="timer"
+            :aria-label="`${t.questCouncilTimer}: ${councilClock}`"
+          >
+            {{ councilClock }}
+          </p>
         </div>
-        <footer class="bottom">
-          <button type="button" class="action secondary" @click="toSetup">{{ t.questToSetup }}</button>
+        <footer v-if="hunting" class="bottom input">
+          <p class="prompt">{{ t.questHuntQuestion }}</p>
+          <div class="fails">
+            <button type="button" class="action primary side-evil-bg" @click="endHunt(true)">
+              {{ t.questHuntAnswers.yes }}
+            </button>
+            <button type="button" class="action primary" @click="endHunt(false)">{{ t.questHuntAnswers.no }}</button>
+          </div>
+          <button type="button" class="action secondary small" @click="hunting = false">{{ t.questHuntBack }}</button>
+        </footer>
+        <footer v-else class="bottom input">
+          <button type="button" class="action secondary" @click="startHunt">{{ t.questHunt }}</button>
+          <button type="button" class="action primary" @click="lastChance">{{ t.questToLastChance }}</button>
         </footer>
       </template>
 
-      <!-- Финальный совет: заглушка до тикета 03 -->
+      <!-- Последний шанс: подсказка по механике и три кнопки итога -->
+      <template v-else-if="game.phase === 'lastChance'">
+        <div class="body">
+          <h2 class="tale-title">{{ t.questLastChanceTitle }}</h2>
+          <ul class="rules">
+            <li v-for="rule in lastChanceRules" :key="rule">{{ rule }}</li>
+          </ul>
+        </div>
+        <footer class="bottom input">
+          <p class="prompt">{{ t.questLastChanceQuestion }}</p>
+          <button
+            v-for="kind in LAST_CHANCE_RESULTS"
+            :key="kind"
+            type="button"
+            class="action"
+            :class="kind === 'lastChanceEvil' ? 'secondary' : 'primary'"
+            @click="endLastChance(kind)"
+          >
+            {{ t.questLastChanceResults[kind] }}
+          </button>
+        </footer>
+      </template>
+
+      <!-- Финал: заголовок цвета победившей стороны, текст и вставки по ролям состава -->
       <template v-else>
-        <div class="body center">
-          <GameIcon name="quest" class="big-icon" />
-          <p class="message">{{ t.questCouncil }}</p>
-          <p class="note">{{ t.questStub }}</p>
+        <div class="body">
+          <h2 class="tale-title verdict-title" :class="`side-${finaleSide}`">
+            {{ game.finale ? t.questFinaleTitles[game.finale.kind] : '' }}
+          </h2>
+          <p class="reading">{{ finaleText }}</p>
+          <p v-if="finaleLines.length > 0" class="reading">{{ finaleLines.join(' ') }}</p>
         </div>
         <footer class="bottom">
           <button type="button" class="action secondary" @click="toSetup">{{ t.questToSetup }}</button>
+          <button type="button" class="action primary" @click="playAgain">{{ t.questNewGame }}</button>
         </footer>
       </template>
     </template>
@@ -881,6 +1061,24 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
   font-variant-numeric: tabular-nums;
 }
 
+/* --- Совет и финал --- */
+
+.clock {
+  margin: 8px 4px 0;
+  font-size: calc(48px * var(--font-scale));
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.clock.over {
+  color: var(--accent);
+}
+
+.verdict-title {
+  color: var(--side);
+}
+
 /* --- Кнопки --- */
 
 .action {
@@ -916,6 +1114,18 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
 
 .secondary:active {
   background: var(--surface-active);
+}
+
+/* «Охотник угадал» — победа зла: кнопка цвета зла. */
+.side-evil-bg {
+  background: var(--faction-mafia);
+  color: #fff;
+}
+
+.small {
+  flex: none;
+  min-height: 48px;
+  font-size: 18px;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -22,7 +22,7 @@ import {
   standardLineup,
 } from '~/quest/lineups'
 import { getQuestRole } from '~/quest/roles'
-import { decided, drawTale, isSuccess, newGame, randomIndex } from '~/quest/game'
+import { decided, drawTale, finale, isSuccess, newGame } from '~/quest/game'
 import { questTexts } from '~/quest/texts'
 
 const STORAGE_KEY = 'koster.quest'
@@ -143,13 +143,45 @@ export function useQuest() {
     if (!quest.playedTales.includes(game.currentTaleId)) quest.playedTales.push(game.currentTaleId)
     const winner = decided(game)
     if (winner === 'good') {
-      game.finale = { kind: 'goodQuests', variant: randomIndex(texts.finales.goodQuests.length) }
-      game.phase = 'finale'
+      finish(texts, 'goodQuests')
     } else if (winner === 'evil') {
       game.phase = 'council'
     } else {
       game.phase = 'handoff'
     }
+  }
+
+  /** Совет закончен по кнопке или по таймеру: стол переходит к Последнему шансу. */
+  function toLastChance() {
+    const game = quest.game
+    if (!game || game.phase !== 'council') return
+    game.phase = 'lastChance'
+  }
+
+  /** Итог Охоты: Охотник угадал обе роли — победа зла, иначе добра. */
+  function huntResult(texts: QuestTexts, guessed: boolean) {
+    if (quest.game?.phase !== 'council') return
+    finish(texts, guessed ? 'huntWon' : 'huntLost')
+  }
+
+  /** Итог Последнего шанса — одна из трёх кнопок. */
+  function lastChanceResult(texts: QuestTexts, kind: 'lastChanceGood' | 'lastChanceEvil' | 'veteransEvil') {
+    if (quest.game?.phase !== 'lastChance') return
+    finish(texts, kind)
+  }
+
+  function finish(texts: QuestTexts, kind: QuestFinaleKind) {
+    const game = quest.game
+    if (!game) return
+    game.finale = finale(texts, kind)
+    game.phase = 'finale'
+  }
+
+  /** «Новая партия» после финала: тот же состав из снимка партии, новое вступление, походы — из несыгранных. */
+  function replay(texts: QuestTexts) {
+    const game = quest.game
+    if (!game) return
+    quest.game = newGame(texts, game.roles, game.players)
   }
 
   /** Партия брошена или доиграна: следующий вход начнётся с настройки. */
@@ -177,6 +209,10 @@ export function useQuest() {
     enterFails,
     cancelOutcome,
     leaveOutcome,
+    toLastChance,
+    huntResult,
+    lastChanceResult,
+    replay,
     endGame,
   }
 }

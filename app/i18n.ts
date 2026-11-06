@@ -1,4 +1,4 @@
-import type { DeckType, Faction, Lang } from '~/types'
+import type { DeckType, Faction, Lang, QuestFinaleKind } from '~/types'
 
 /** Название приложения — одна запись; в манифесте продублировано в nuxt.config.ts. */
 export const APP_NAME = 'Костёр'
@@ -182,8 +182,6 @@ export interface Messages {
   /** Предупреждения под составом: показываются, но начать не мешают; в `wrongCount` {m} — сколько нужно. */
   questWarnings: Record<'nonStandard' | 'wrongCount', string>
   questStart: string
-  /** Заглушка вместо Финального совета, пока его нет. */
-  questStub: string
   questToSetup: string
   questNoTexts: string
   questResumeTitle: string
@@ -210,8 +208,32 @@ export interface Messages {
   /** Подсказки передачи лидерства — по пункту на строку. */
   questHandoffRules: string[]
   questNewLeader: string
-  questGoodWins: string
+  /** Заголовок над текстом финала — кто и как победил. */
+  questFinaleTitles: Record<QuestFinaleKind, string>
   questCouncil: string
+  /** Под текстом совета: сколько обсуждать и что может Охотник. */
+  questCouncilHint: string
+  /** Подпись таймера совета для экранного диктора. */
+  questCouncilTimer: string
+  questHunt: string
+  questToLastChance: string
+  questHuntTitle: string
+  /** Правила Охоты: `base` — всегда, `hidden` — при 4–5 игроках, `dukes` — если в составе Герцог или Эрцгерцог. */
+  questHuntRules: { base: string[]; hidden: string; dukes: string; verdict: string }
+  questHuntQuestion: string
+  questHuntAnswers: Record<'yes' | 'no', string>
+  /** Охоту объявили по ошибке — назад к совету. */
+  questHuntBack: string
+  questLastChanceTitle: string
+  /** Подсказка Последнего шанса; строки `roles` — только для ролей из состава. */
+  questLastChanceRules: {
+    point: string
+    roles: Record<'duke' | 'archduke' | 'duke-alt' | 'apprentice', string>
+    verdict: string
+    veterans: string
+  }
+  questLastChanceQuestion: string
+  questLastChanceResults: Record<'lastChanceGood' | 'lastChanceEvil' | 'veteransEvil', string>
 }
 
 /** Названия языков — на самом языке, чтобы переключатель читался при любом текущем. */
@@ -404,7 +426,6 @@ export const messages: Record<Lang, Messages> = {
       wrongCount: 'Сумма карт не сходится: нужно {m}.',
     },
     questStart: 'Начать',
-    questStub: 'Финальный совет появится в следующей версии.',
     questToSetup: 'К настройке',
     questNoTexts: 'Quest пока есть только на русском.',
     questResumeTitle: 'Продолжить партию?',
@@ -431,8 +452,50 @@ export const messages: Record<Lang, Messages> = {
       'Отдай новому лидеру жетон лидера и телефон.',
     ],
     questNewLeader: 'Я новый лидер',
-    questGoodWins: 'Победа добра',
+    questFinaleTitles: {
+      goodQuests: 'Победа добра',
+      huntWon: 'Охота удалась — победа зла',
+      huntLost: 'Охота не удалась — победа добра',
+      lastChanceGood: 'Последний шанс — победа добра',
+      lastChanceEvil: 'Последний шанс — победа зла',
+      veteransEvil: 'Все ветераны злые — победа добра',
+    },
     questCouncil: 'Финальный совет',
+    questCouncilHint: 'Обсуждайте до 5 минут. Слепой Охотник может в любой момент открыться и объявить Охоту.',
+    questCouncilTimer: 'Осталось времени',
+    questHunt: 'Охотник объявил Охоту',
+    questToLastChance: 'К Последнему шансу',
+    questHuntTitle: 'Охота',
+    questHuntRules: {
+      base: [
+        'Охотник открывает свою карту и называет двух добрых игроков по их ролям.',
+        'Одним из двух обязательно должен быть Клирик.',
+      ],
+      hidden: 'Можно назвать и карту, что лежит рубашкой вверх под планшетом.',
+      dukes: 'Герцог и Эрцгерцог в Охоте считаются Верными слугами.',
+      verdict: 'Угадал обе роли — побеждает зло, ошибся хотя бы в одной — добро.',
+    },
+    questHuntQuestion: 'Охотник угадал обе роли?',
+    questHuntAnswers: { yes: 'Угадал', no: 'Не угадал' },
+    questHuntBack: 'Охоты не было',
+    questLastChanceTitle: 'Последний шанс',
+    questLastChanceRules: {
+      point: 'Все одновременно указывают на двух игроков, которых считают злодеями. Злодеи опускают руки.',
+      roles: {
+        duke: 'Герцог может отменить один голос — опустить чью-то руку.',
+        archduke: 'Эрцгерцог может изменить один голос — перевести чью-то руку на другого игрока.',
+        'duke-alt': 'Герцог (вариант автора) указывает одной рукой; если злодей остался неназванным, может поднять вторую.',
+        apprentice: 'Ученик указывает одной рукой и может опустить её, если она указывает на доброго.',
+      },
+      verdict: 'Добрые указывают ровно на всех злодеев — победа добра, иначе победа зла.',
+      veterans: 'Но если все ветераны (бывшие лидеры) оказались злыми — побеждает добро: злу нельзя вести все походы самому.',
+    },
+    questLastChanceQuestion: 'Чем закончился Последний шанс?',
+    questLastChanceResults: {
+      lastChanceGood: 'Добро указало верно',
+      lastChanceEvil: 'Добро ошиблось',
+      veteransEvil: 'Все ветераны злые',
+    },
   },
   en: {
     deckTypes: {
@@ -617,7 +680,6 @@ export const messages: Record<Lang, Messages> = {
       wrongCount: 'The card count is off: {m} needed.',
     },
     questStart: 'Start',
-    questStub: 'The Final Council is coming in the next version.',
     questToSetup: 'Back to setup',
     questNoTexts: 'Quest is only available in Russian for now.',
     questResumeTitle: 'Continue the game?',
@@ -644,7 +706,49 @@ export const messages: Record<Lang, Messages> = {
       'Give the new leader the leader token and the phone.',
     ],
     questNewLeader: 'I’m the new leader',
-    questGoodWins: 'Good triumphs',
+    questFinaleTitles: {
+      goodQuests: 'Good triumphs',
+      huntWon: 'The Hunt succeeds — Evil wins',
+      huntLost: 'The Hunt fails — Good wins',
+      lastChanceGood: 'Last Chance — Good wins',
+      lastChanceEvil: 'Last Chance — Evil wins',
+      veteransEvil: 'All Veterans are Evil — Good wins',
+    },
     questCouncil: 'Final Council',
+    questCouncilHint: 'Discuss for up to 5 minutes. The Blind Hunter may reveal and start the Hunt at any time.',
+    questCouncilTimer: 'Time left',
+    questHunt: 'The Hunter called the Hunt',
+    questToLastChance: 'To the Last Chance',
+    questHuntTitle: 'The Hunt',
+    questHuntRules: {
+      base: [
+        'The Hunter reveals their card and names two Good players by their roles.',
+        'One of the two must be the Cleric.',
+      ],
+      hidden: 'The face-down card under the tableau may be named too.',
+      dukes: 'The Duke and the Archduke count as Loyal Servants in the Hunt.',
+      verdict: 'Both right — Evil wins; any miss — Good wins.',
+    },
+    questHuntQuestion: 'Did the Hunter name both roles right?',
+    questHuntAnswers: { yes: 'Right', no: 'Wrong' },
+    questHuntBack: 'No Hunt after all',
+    questLastChanceTitle: 'Last Chance',
+    questLastChanceRules: {
+      point: 'Everyone points at two players they think are Evil, all at once. Evil players drop their hands.',
+      roles: {
+        duke: 'The Duke may void one vote — lower someone’s hand.',
+        archduke: 'The Archduke may change one vote — move someone’s hand to another player.',
+        'duke-alt': 'The Duke (designer’s version) points with one hand; if an Evil player is missed, may raise the other.',
+        apprentice: 'The Apprentice points with one hand and may lower it if it points at a Good player.',
+      },
+      verdict: 'If Good points at exactly all the Evil players, Good wins; otherwise Evil wins.',
+      veterans: 'But if all Veterans (former Leaders) turn out to be Evil, Good wins: Evil may not lead every quest.',
+    },
+    questLastChanceQuestion: 'How did the Last Chance end?',
+    questLastChanceResults: {
+      lastChanceGood: 'Good pointed right',
+      lastChanceEvil: 'Good missed',
+      veteransEvil: 'All Veterans are Evil',
+    },
   },
 }
