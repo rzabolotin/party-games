@@ -3,6 +3,7 @@ import { clearPlayed } from '~/alias/played'
 import { clearDanetki } from '~/composables/useDanetki'
 import { useMessages } from '~/composables/useMessages'
 import { useProgress } from '~/composables/useProgress'
+import { clearQuest } from '~/composables/useQuest'
 import { FONT_SCALES, useSettings } from '~/composables/useSettings'
 import { langNames } from '~/i18n'
 import { LANGS } from '~/types'
@@ -40,6 +41,8 @@ function resetProgress() {
   clearPlayed()
   // Данетки — целиком: разгаданные, текущие истории и переключатель мрачных.
   clearDanetki()
+  // Quest — целиком: состав, а позже и сыгранные походы с незаконченной партией.
+  clearQuest()
 }
 </script>
 

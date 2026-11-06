@@ -166,6 +166,26 @@ export interface Messages {
   danetkiDarkLeft: string
   danetkiRestart: string
   danetkiNoStories: string
+  quest: string
+  questSubtitle: string
+  /** Подпись на экране настройки: чей это помощник. */
+  questTagline: string
+  questPlayersCount: string
+  questSides: Record<'good' | 'evil', string>
+  /** Заголовок группы ролей, которых нет в таблице Director's Cut. */
+  questAlternatives: string
+  questYouthOrTroublemaker: string
+  /** Пометка при 4–5 игроках. */
+  questHiddenNote: string
+  /** Сумма карт под составом: {n} — в составе, {m} — нужно. */
+  questCards: string
+  /** Предупреждения под составом: показываются, но начать не мешают; в `wrongCount` {m} — сколько нужно. */
+  questWarnings: Record<'nonStandard' | 'wrongCount', string>
+  questStart: string
+  /** Заглушка вместо партии, пока её нет. */
+  questStub: string
+  questToSetup: string
+  questNoTexts: string
 }
 
 /** Названия языков — на самом языке, чтобы переключатель читался при любом текущем. */
@@ -344,6 +364,23 @@ export const messages: Record<Lang, Messages> = {
     danetkiDarkLeft: 'Включите мрачные истории — там ещё {n}',
     danetkiRestart: 'Начать заново',
     danetkiNoStories: 'Историй на этом языке пока нет.',
+    quest: 'Quest',
+    questSubtitle: 'Рыцари Круглого стола',
+    questTagline: 'Помощник для настольной игры Quest',
+    questPlayersCount: 'Игроков',
+    questSides: { good: 'Добро', evil: 'Зло' },
+    questAlternatives: 'Альтернативные роли автора',
+    questYouthOrTroublemaker: 'Юнец или Смутьян',
+    questHiddenNote: 'Карт на одну больше, чем игроков: одну роль добра положите рубашкой вверх под планшет.',
+    questCards: 'Карт в составе: {n} из {m}',
+    questWarnings: {
+      nonStandard: 'Состав нестандартный — не по таблице Director’s Cut.',
+      wrongCount: 'Сумма карт не сходится: нужно {m}.',
+    },
+    questStart: 'Начать',
+    questStub: 'Партия появится в следующей версии.',
+    questToSetup: 'К настройке',
+    questNoTexts: 'Quest пока есть только на русском.',
   },
   en: {
     deckTypes: {
@@ -514,5 +551,22 @@ export const messages: Record<Lang, Messages> = {
     danetkiDarkLeft: 'Turn on dark stories — {n} more there',
     danetkiRestart: 'Start over',
     danetkiNoStories: 'No stories in this language yet.',
+    quest: 'Quest',
+    questSubtitle: 'Knights of the Round Table',
+    questTagline: 'A companion for the Quest board game',
+    questPlayersCount: 'Players',
+    questSides: { good: 'Good', evil: 'Evil' },
+    questAlternatives: 'Designer’s alternative roles',
+    questYouthOrTroublemaker: 'Youth or Troublemaker',
+    questHiddenNote: 'One more card than players: put one Good role face down under the tableau.',
+    questCards: 'Cards in the lineup: {n} of {m}',
+    questWarnings: {
+      nonStandard: 'Non-standard lineup — not the Director’s Cut table.',
+      wrongCount: 'The card count is off: {m} needed.',
+    },
+    questStart: 'Start',
+    questStub: 'The game itself is coming in the next version.',
+    questToSetup: 'Back to setup',
+    questNoTexts: 'Quest is only available in Russian for now.',
   },
 }

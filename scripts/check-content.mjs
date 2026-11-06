@@ -23,13 +23,18 @@ const MAX_DANETKA_ANSWER = 240
 
 const DECKS_DIR = new URL('../app/decks/', import.meta.url)
 const { decks } = await import(new URL('index.ts', DECKS_DIR).href)
-const { LANGS, DECK_TYPES, FACTIONS, ROLE_IDS, THEME_IDS, ALIAS_LEVELS, DANETKA_TONES } = await import(
+const { LANGS, DECK_TYPES, FACTIONS, ROLE_IDS, THEME_IDS, ALIAS_LEVELS, DANETKA_TONES, QUEST_ROLE_IDS, QUEST_SIDES } =
+  await import(
   new URL('../app/types/index.ts', import.meta.url).href
 )
 const { roles } = await import(new URL('../app/mafia/roles.ts', import.meta.url).href)
 const { themes, words } = await import(new URL('../app/spy/themes.ts', import.meta.url).href)
 const { levels: aliasLevels, words: aliasWords } = await import(new URL('../app/alias/levels.ts', import.meta.url).href)
 const { stories: danetki } = await import(new URL('../app/danetki/stories.ts', import.meta.url).href)
+const { questRoles } = await import(new URL('../app/quest/roles.ts', import.meta.url).href)
+const { directorsCut, expectedCards, QUEST_MIN_PLAYERS, QUEST_MAX_PLAYERS } = await import(
+  new URL('../app/quest/lineups.ts', import.meta.url).href
+)
 
 const problems = []
 const fail = (where, what) => problems.push(`${where}: ${what}`)
@@ -301,6 +306,64 @@ for (const lang of LANGS) {
   }
 }
 
+// --- Quest: справочник ролей и таблица составов Director's Cut ---
+
+if (questRoles.length !== QUEST_ROLE_IDS.length) {
+  fail('роли Quest', `ролей ${questRoles.length}, нужно ровно ${QUEST_ROLE_IDS.length}`)
+}
+
+const questRoleIds = new Set()
+/** Роли по id — для проверки таблицы: уникальность и альтернативность. */
+const questRoleById = new Map()
+for (const role of questRoles) {
+  const where = `роль Quest ${role.id ?? '(без id)'}`
+  if (!QUEST_ROLE_IDS.includes(role.id)) fail(where, `неизвестный id «${role.id}»`)
+  else if (questRoleIds.has(role.id)) fail(where, 'id повторяется')
+  else questRoleIds.add(role.id)
+  questRoleById.set(role.id, role)
+
+  if (!QUEST_SIDES.includes(role.side)) fail(where, `неизвестная сторона «${role.side}»`)
+  if (typeof role.unique !== 'boolean') fail(where, 'unique — не boolean')
+  for (const field of ['title', 'original', 'ability']) {
+    const text = role[field]
+    if (typeof text !== 'string' || !text.trim()) fail(where, `пустой ${field}`)
+  }
+}
+for (const id of QUEST_ROLE_IDS) {
+  if (!questRoleIds.has(id)) fail('роли Quest', `нет роли «${id}» в справочнике`)
+}
+
+for (let players = QUEST_MIN_PLAYERS; players <= QUEST_MAX_PLAYERS; players++) {
+  const where = `состав Quest на ${players}`
+  const row = directorsCut[players]
+  if (!row) {
+    fail(where, 'нет строки в таблице')
+    continue
+  }
+  let sum = 0
+  for (const [id, count] of Object.entries(row)) {
+    const role = questRoleById.get(id)
+    if (!role) {
+      fail(where, `неизвестная роль «${id}»`)
+      continue
+    }
+    if (!Number.isInteger(count) || count < 0) {
+      fail(where, `${id}: «${count}» — не целое неотрицательное`)
+      continue
+    }
+    if (role.unique && count > 1) fail(where, `уникальная роль ${id} — ${count} карты`)
+    if (role.alternative && count > 0) fail(where, `альтернативная роль ${id} не из таблицы Director's Cut`)
+    sum += count
+  }
+  if (sum !== expectedCards(players)) fail(where, `карт ${sum}, нужно ${expectedCards(players)}`)
+}
+for (const key of Object.keys(directorsCut)) {
+  const players = Number(key)
+  if (!(players >= QUEST_MIN_PLAYERS && players <= QUEST_MAX_PLAYERS)) {
+    fail('составы Quest', `лишняя строка на ${key} игроков`)
+  }
+}
+
 // --- Итог ---
 
 if (problems.length > 0) {
@@ -320,5 +383,5 @@ const danetkiStats = LANGS.map((lang) => {
   return `${lang} ${list.length} (светлых ${list.length - dark}, мрачных ${dark})`
 })
 console.log(
-  `✓ Контент в порядке — ${stats.join('; ')}; ролей «Мафии» ${roles.length}; тем «Шпиона» ${themes.length}; уровней Alias ${aliasLevels.length}; данеток: ${danetkiStats.join(', ')}`,
+  `✓ Контент в порядке — ${stats.join('; ')}; ролей «Мафии» ${roles.length}; тем «Шпиона» ${themes.length}; уровней Alias ${aliasLevels.length}; данеток: ${danetkiStats.join(', ')}; Quest: ролей ${questRoles.length}, составов ${Object.keys(directorsCut).length}`,
 )

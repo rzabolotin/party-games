@@ -158,3 +158,59 @@ export interface DanetkiState {
   /** Текущая история языка; null — не выдана. */
   current: Record<Lang, number | null>
 }
+
+/**
+ * Роли Quest; порядок массива — порядок на экране состава: сначала добро, потом зло.
+ * `duke-alt` и `apprentice` — альтернативные роли автора, в таблице Director's Cut их нет.
+ */
+export const QUEST_ROLE_IDS = [
+  'servant',
+  'cleric',
+  'youth',
+  'troublemaker',
+  'duke',
+  'archduke',
+  'duke-alt',
+  'apprentice',
+  'minion',
+  'morgan',
+  'hunter',
+] as const
+export type QuestRoleId = (typeof QUEST_ROLE_IDS)[number]
+
+export const QUEST_SIDES = ['good', 'evil'] as const
+export type QuestSide = (typeof QUEST_SIDES)[number]
+
+/** Роль Quest в справочнике. Режим только на русском, поэтому тексты — строки, а не по языкам. */
+export interface QuestRole {
+  id: QuestRoleId
+  side: QuestSide
+  /** «Клирик». */
+  title: string
+  /** «Cleric» — название на английских картах, показывается в скобках. */
+  original: string
+  /** Способность своими словами, по правилам Director's Cut. */
+  ability: string
+  /** Карта в единственном экземпляре: все, кроме слуги и приспешника. */
+  unique: boolean
+  /** Альтернативная роль автора: в таблице Director's Cut её нет, добавляется вручную. */
+  alternative?: boolean
+}
+
+/** Состав роли → сколько карт. */
+export type QuestLineup = Record<QuestRoleId, number>
+
+/** Настройка Quest — ровно в таком виде лежит в `koster.quest.setup`. */
+export interface QuestSetup {
+  /** 4…10, по умолчанию 5. */
+  players: number
+  /** Ячейка «1 of either» таблицы при 6+ игроках, по умолчанию Юнец. */
+  youthOrTroublemaker: 'youth' | 'troublemaker'
+  /** Состав, поправленный вручную; null — по таблице. */
+  roles: Partial<QuestLineup> | null
+}
+
+/** Состояние Quest в localStorage. Сыгранные походы и партия добавятся вместе с партией. */
+export interface QuestState {
+  setup: QuestSetup
+}

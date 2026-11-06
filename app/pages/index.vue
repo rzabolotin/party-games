@@ -2,6 +2,7 @@
 import { useMessages } from '~/composables/useMessages'
 import { useSettings } from '~/composables/useSettings'
 import { hasStories } from '~/danetki/stories'
+import { hasQuest } from '~/quest/texts'
 import { deckTypeEmoji } from '~/decks'
 import { APP_NAME } from '~/i18n'
 import { DECK_TYPES } from '~/types'
@@ -39,6 +40,12 @@ const settings = useSettings()
       <li v-if="hasStories(settings.lang)">
         <MenuRow to="/danetki" :title="t.danetki" :note="t.danetkiSubtitle">
           <template #icon><GameIcon name="danetki" /></template>
+        </MenuRow>
+      </li>
+      <!-- Quest только на русском: на других языках строки нет. -->
+      <li v-if="hasQuest(settings.lang)">
+        <MenuRow to="/quest" :title="t.quest" :note="t.questSubtitle">
+          <template #icon><GameIcon name="quest" /></template>
         </MenuRow>
       </li>
     </ul>
