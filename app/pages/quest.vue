@@ -2,8 +2,10 @@
 import { useMessages } from '~/composables/useMessages'
 import { useQuest } from '~/composables/useQuest'
 import { useSettings } from '~/composables/useSettings'
+import { useWakeLock } from '~/composables/useWakeLock'
+import { GOOD_WINS, decided, evilThreshold, outcomeText, score } from '~/quest/game'
 import { questRoles } from '~/quest/roles'
-import { hasQuest } from '~/quest/texts'
+import { findIntro, findTale, questTexts } from '~/quest/texts'
 import type { QuestRoleId } from '~/types'
 
 const t = useMessages()
@@ -22,14 +24,83 @@ const {
   chooseYouthOrTroublemaker,
   canChangeRole,
   changeRole,
+  quest,
+  startGame,
+  nextQuest,
+  enterFails,
+  cancelOutcome,
+  leaveOutcome,
+  endGame,
 } = useQuest()
 
-/** Режим только на языках с текстами: в остальных — сообщение и ссылка на главную. */
-const available = computed(() => hasQuest(settings.lang))
+/** Тексты языка интерфейса; нет — режим недоступен: сообщение и ссылка на главную. */
+const texts = computed(() => questTexts[settings.lang])
+const available = computed(() => texts.value !== undefined)
 
-// --- Стейт-машина: пока setup → stub; партия придёт следующим шагом ---
+// --- Стейт-машина ---
+// setup → game; resume → game | setup. Внутри game — фазы партии из `koster.quest.game`:
+// intro ─Дальше─▶ quest ─ввод─▶ outcome ─Отменить─▶ quest
+// outcome ─Передать лидерство─▶ handoff ─Я новый лидер─▶ quest
+// outcome ─3 успеха─▶ finale(goodQuests); outcome ─порог провалов─▶ council (пока заглушка)
 
-const stage = ref<'setup' | 'stub'>('setup')
+/** Незаконченная партия при входе — сначала «Продолжить партию?», как в Alias. */
+const stage = ref<'setup' | 'resume' | 'game'>(quest.game ? 'resume' : 'setup')
+const game = computed(() => quest.game)
+/** Экран не гаснет на всех фазах после настройки. */
+useWakeLock(computed(() => stage.value === 'game'))
+
+function start() {
+  if (!texts.value) return
+  startGame(texts.value)
+  stage.value = 'game'
+}
+
+/** «Новая партия» на «Продолжить?» и «К настройке» из партии: партия стирается. */
+function toSetup() {
+  endGame()
+  stage.value = 'setup'
+}
+
+// --- Партия ---
+
+const intro = computed(() => (game.value && texts.value ? findIntro(texts.value, game.value.introId) : undefined))
+const tale = computed(() =>
+  game.value?.currentTaleId != null && texts.value ? findTale(texts.value, game.value.currentTaleId) : undefined,
+)
+/** Исход на экране — последний введённый поход. */
+const result = computed(() => (game.value?.phase === 'outcome' ? game.value.quests.at(-1) : undefined))
+const currentScore = computed(() => (game.value ? score(game.value) : { good: 0, evil: 0 }))
+const evilSlots = computed(() => (game.value ? evilThreshold(game.value.players) : 3))
+/** Номер похода на столе: на исходе он уже записан в партию. */
+const questNumber = computed(() => {
+  const played = game.value?.quests.length ?? 0
+  return game.value?.phase === 'outcome' ? played : played + 1
+})
+const winner = computed(() => (game.value ? decided(game.value) : null))
+const finaleText = computed(() => {
+  const finale = game.value?.finale
+  return finale && texts.value ? (texts.value.finales[finale.kind][finale.variant] ?? texts.value.finales[finale.kind][0]) : ''
+})
+
+/** Переключатель «нужно 2 провала» — на каждый поход заново; «Отменить» возвращает введённое. */
+const doubleFail = ref(false)
+
+function toQuest() {
+  if (!texts.value) return
+  nextQuest(texts.value)
+  doubleFail.value = false
+}
+
+function cancel() {
+  doubleFail.value = result.value?.doubleFail ?? false
+  cancelOutcome()
+}
+
+function proceed() {
+  if (texts.value) leaveOutcome(texts.value)
+}
+
+const FAIL_OPTIONS = [0, 1, 2, 3] as const
 
 // --- Экран настройки ---
 
@@ -191,25 +262,144 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
 
       <!-- Предупреждения начать не мешают: нестандартный состав — решение стола. -->
       <footer class="bottom">
-        <button type="button" class="action primary" @click="stage = 'stub'">{{ t.questStart }}</button>
+        <button type="button" class="action primary" @click="start">{{ t.questStart }}</button>
       </footer>
     </template>
 
-    <!-- Заглушка партии -->
-    <template v-else>
+    <!-- Незаконченная партия: продолжить с той же фазы или начать заново -->
+    <template v-else-if="stage === 'resume' && game">
       <header class="top">
-        <button type="button" class="back" @click="stage = 'setup'">← {{ t.questToSetup }}</button>
+        <NuxtLink to="/" class="back">← {{ t.decks }}</NuxtLink>
         <h1 class="title">{{ t.quest }}</h1>
       </header>
 
       <div class="body center">
-        <GameIcon name="quest" class="stub-icon" />
-        <p class="message">{{ t.questStub }}</p>
+        <GameIcon name="quest" class="big-icon" />
+        <p class="message">{{ t.questResumeTitle }}</p>
+        <p v-if="game.quests.length > 0" class="resume-score">
+          {{ t.questSides.good }} <strong>{{ currentScore.good }}</strong> : <strong>{{ currentScore.evil }}</strong>
+          {{ t.questSides.evil }}
+        </p>
       </div>
 
       <footer class="bottom">
-        <button type="button" class="action secondary" @click="stage = 'setup'">{{ t.questToSetup }}</button>
+        <button type="button" class="action secondary" @click="toSetup">{{ t.questNewGame }}</button>
+        <button type="button" class="action primary" @click="stage = 'game'">{{ t.questResume }}</button>
       </footer>
+    </template>
+
+    <!-- Партия: шапка и кнопки приколоты, текст прокручивается -->
+    <template v-else-if="game">
+      <header class="top">
+        <NuxtLink to="/" class="back">← {{ t.decks }}</NuxtLink>
+        <h1 class="title">{{ t.quest }}</h1>
+      </header>
+
+      <!-- Вступление; ночь пока пропускается кнопкой «Дальше» -->
+      <template v-if="game.phase === 'intro' || game.phase === 'night'">
+        <div class="body">
+          <p class="reading">{{ intro?.text }}</p>
+        </div>
+        <footer class="bottom">
+          <button type="button" class="action primary" @click="toQuest">{{ t.questNext }}</button>
+        </footer>
+      </template>
+
+      <!-- Поход и его исход: общий номер и счёт кружками, ниже завязка с вводом или исход -->
+      <template v-else-if="(game.phase === 'quest' || game.phase === 'outcome') && tale">
+        <div class="body">
+          <div class="status">
+            <span class="number">{{ t.questNumber.replace('{n}', String(questNumber)) }}</span>
+            <span class="score" :aria-label="`${t.questSides.good} ${currentScore.good}, ${t.questSides.evil} ${currentScore.evil}`">
+              <span class="dots side-good" aria-hidden="true">
+                <span v-for="i in GOOD_WINS" :key="i" class="dot" :class="{ on: i <= currentScore.good }" />
+              </span>
+              <span class="dots side-evil" aria-hidden="true">
+                <span v-for="i in evilSlots" :key="i" class="dot" :class="{ on: i <= currentScore.evil }" />
+              </span>
+            </span>
+          </div>
+          <template v-if="result">
+            <p class="verdict" :class="result.success ? 'side-good' : 'side-evil'">
+              {{ result.success ? t.questOutcome.success : t.questOutcome.fail }}
+            </p>
+            <p class="fails-count">
+              {{ t.questFailsCount.replace('{n}', result.fails >= 3 ? t.questFailsMore : String(result.fails)) }}
+            </p>
+            <h2 class="tale-title">{{ tale.title }}</h2>
+            <p class="reading">{{ outcomeText(tale, result) }}</p>
+          </template>
+          <template v-else>
+            <h2 class="tale-title">{{ tale.title }}</h2>
+            <p class="reading">{{ tale.setup }}</p>
+            <ul class="hints">
+              <li>{{ t.questTokensHint }}</li>
+              <li>{{ t.questTeamSize }}</li>
+            </ul>
+          </template>
+        </div>
+        <footer v-if="result" class="bottom">
+          <button type="button" class="action secondary" @click="cancel">{{ t.questCancel }}</button>
+          <button type="button" class="action primary" @click="proceed">
+            {{ winner === 'good' ? t.questToFinale : winner === 'evil' ? t.questToCouncil : t.questPassLeadership }}
+          </button>
+        </footer>
+        <footer v-else class="bottom input">
+          <label class="toggle">
+            <input v-model="doubleFail" type="checkbox" />
+            <span>{{ t.questDoubleFail }}</span>
+          </label>
+          <p class="prompt">{{ t.questFailsPrompt }}</p>
+          <div class="fails">
+            <button
+              v-for="fails in FAIL_OPTIONS"
+              :key="fails"
+              type="button"
+              class="action fail-button"
+              :class="fails === 0 ? 'secondary' : 'primary'"
+              @click="enterFails(fails, doubleFail)"
+            >
+              {{ fails === 3 ? t.questFailsMore : fails }}
+            </button>
+          </div>
+        </footer>
+      </template>
+
+      <!-- Передача лидерства -->
+      <template v-else-if="game.phase === 'handoff'">
+        <div class="body">
+          <h2 class="tale-title">{{ t.questHandoffTitle }}</h2>
+          <ul class="rules">
+            <li v-for="rule in t.questHandoffRules" :key="rule">{{ rule }}</li>
+          </ul>
+        </div>
+        <footer class="bottom">
+          <button type="button" class="action primary" @click="toQuest">{{ t.questNewLeader }}</button>
+        </footer>
+      </template>
+
+      <!-- Финал -->
+      <template v-else-if="game.phase === 'finale'">
+        <div class="body">
+          <h2 class="tale-title">{{ t.questGoodWins }}</h2>
+          <p class="reading">{{ finaleText }}</p>
+        </div>
+        <footer class="bottom">
+          <button type="button" class="action secondary" @click="toSetup">{{ t.questToSetup }}</button>
+        </footer>
+      </template>
+
+      <!-- Финальный совет: заглушка до тикета 03 -->
+      <template v-else>
+        <div class="body center">
+          <GameIcon name="quest" class="big-icon" />
+          <p class="message">{{ t.questCouncil }}</p>
+          <p class="note">{{ t.questStub }}</p>
+        </div>
+        <footer class="bottom">
+          <button type="button" class="action secondary" @click="toSetup">{{ t.questToSetup }}</button>
+        </footer>
+      </template>
     </template>
   </main>
 </template>
@@ -527,6 +717,10 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
   text-align: center;
 }
 
+.center .note {
+  margin: 0;
+}
+
 .message {
   margin: 0;
   font-size: calc(24px * var(--font-scale));
@@ -542,9 +736,149 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
   text-decoration: none;
 }
 
-.stub-icon {
+.big-icon {
   color: var(--accent);
   font-size: 84px;
+}
+
+.resume-score {
+  margin: 0;
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.resume-score strong {
+  color: var(--fg);
+}
+
+/* --- Партия --- */
+
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 4px 16px;
+}
+
+.number {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.score {
+  display: flex;
+  gap: 14px;
+}
+
+.dots {
+  display: flex;
+  gap: 5px;
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--side);
+  border-radius: 50%;
+}
+
+.dot.on {
+  background: var(--side);
+}
+
+.tale-title {
+  margin: 0 4px 12px;
+  font-size: calc(24px * var(--font-scale));
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+
+.reading {
+  margin: 0 4px 16px;
+  font-size: calc(20px * var(--font-scale));
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.hints,
+.rules {
+  margin: 0 4px;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: calc(16px * var(--font-scale));
+  line-height: 1.4;
+}
+
+.rules {
+  color: var(--fg);
+  font-size: calc(18px * var(--font-scale));
+}
+
+.hints li + li,
+.rules li + li {
+  margin-top: 8px;
+}
+
+.verdict {
+  margin: 0 4px 4px;
+  color: var(--side);
+  font-size: calc(30px * var(--font-scale));
+  font-weight: 800;
+}
+
+.fails-count {
+  margin: 0 4px 16px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+/* Ввод провалов: переключатель, вопрос и четыре кнопки — всё в приколотой панели. */
+.bottom.input {
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 4px 14px;
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggle input {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.prompt {
+  margin: 0 4px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.fails {
+  display: flex;
+  gap: 8px;
+}
+
+.fail-button {
+  min-width: 0;
+  padding: 12px 4px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Кнопки --- */

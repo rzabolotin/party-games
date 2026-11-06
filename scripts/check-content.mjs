@@ -20,11 +20,27 @@ const MAX_ALIAS_WORDS = 450
 const MAX_DANETKA_TITLE = 40
 const MAX_DANETKA_STORY = 260
 const MAX_DANETKA_ANSWER = 240
+/** Quest: каждый текст читается вслух примерно за 30 секунд; связка — одна-две фразы перед завязкой. */
+const MAX_QUEST_TEXT = 500
+const MAX_QUEST_BRIDGE = 160
+/** Вариантов у каждого финала ровно столько. */
+const QUEST_FINALE_VARIANTS = 2
 
 const DECKS_DIR = new URL('../app/decks/', import.meta.url)
 const { decks } = await import(new URL('index.ts', DECKS_DIR).href)
-const { LANGS, DECK_TYPES, FACTIONS, ROLE_IDS, THEME_IDS, ALIAS_LEVELS, DANETKA_TONES, QUEST_ROLE_IDS, QUEST_SIDES } =
-  await import(
+const {
+  LANGS,
+  DECK_TYPES,
+  FACTIONS,
+  ROLE_IDS,
+  THEME_IDS,
+  ALIAS_LEVELS,
+  DANETKA_TONES,
+  QUEST_ROLE_IDS,
+  QUEST_SIDES,
+  QUEST_BRIDGE_KINDS,
+  QUEST_FINALE_KINDS,
+} = await import(
   new URL('../app/types/index.ts', import.meta.url).href
 )
 const { roles } = await import(new URL('../app/mafia/roles.ts', import.meta.url).href)
@@ -35,6 +51,7 @@ const { questRoles } = await import(new URL('../app/quest/roles.ts', import.meta
 const { directorsCut, expectedCards, QUEST_MIN_PLAYERS, QUEST_MAX_PLAYERS } = await import(
   new URL('../app/quest/lineups.ts', import.meta.url).href
 )
+const { questTexts } = await import(new URL('../app/quest/texts.ts', import.meta.url).href)
 
 const problems = []
 const fail = (where, what) => problems.push(`${where}: ${what}`)
@@ -364,6 +381,88 @@ for (const key of Object.keys(directorsCut)) {
   }
 }
 
+// --- Quest: тексты по языкам; языка нет в списке — режим в нём скрыт ---
+
+for (const [lang, texts] of Object.entries(questTexts)) {
+  const at = `тексты Quest ${lang}`
+  /** Все тексты языка: нормализованный текст → где встретился впервые. Повтор в любом поле — ошибка. */
+  const seenTexts = new Map()
+  const text = (where, value, limit) => {
+    if (typeof value !== 'string' || !value.trim()) {
+      fail(where, 'пустой текст')
+      return
+    }
+    if (length(value) > limit) fail(where, `длина ${length(value)} > ${limit}`)
+    const key = normalize(value)
+    const first = seenTexts.get(key)
+    if (first) fail(where, `повторяет ${first}`)
+    else seenTexts.set(key, where)
+  }
+  const list = (where, value) => {
+    if (Array.isArray(value)) return value
+    fail(where, 'не массив')
+    return []
+  }
+  const withIds = (where, items) => {
+    const ids = new Set()
+    for (const [i, item] of items.entries()) {
+      const label = `${where} #${i + 1}${Number.isInteger(item?.id) ? ` (id ${item.id})` : ''}`
+      if (!Number.isInteger(item?.id) || item.id <= 0) fail(label, `id «${item?.id}» — не целое положительное`)
+      else if (ids.has(item.id)) fail(label, 'id повторяется')
+      else ids.add(item.id)
+    }
+  }
+
+  const tales = list(`${at}, походы`, texts.tales)
+  if (tales.length === 0) fail(`${at}, походы`, 'нет ни одного похода')
+  withIds(`${at}, поход`, tales)
+  for (const [i, tale] of tales.entries()) {
+    for (const field of ['title', 'setup', 'success', 'fail', 'failHeavy']) {
+      text(`${at}, поход #${i + 1} ${field}`, tale?.[field], MAX_QUEST_TEXT)
+    }
+  }
+
+  const intros = list(`${at}, вступления`, texts.intros)
+  if (intros.length === 0) fail(`${at}, вступления`, 'нет ни одного вступления')
+  withIds(`${at}, вступление`, intros)
+  for (const [i, intro] of intros.entries()) text(`${at}, вступление #${i + 1}`, intro?.text, MAX_QUEST_TEXT)
+
+  for (const kind of QUEST_BRIDGE_KINDS) {
+    const variants = list(`${at}, связки ${kind}`, texts.bridges?.[kind])
+    if (variants.length === 0) fail(`${at}, связки ${kind}`, 'нет ни одного варианта')
+    for (const [i, bridge] of variants.entries()) text(`${at}, связка ${kind} #${i + 1}`, bridge, MAX_QUEST_BRIDGE)
+  }
+  for (const kind of Object.keys(texts.bridges ?? {})) {
+    if (!QUEST_BRIDGE_KINDS.includes(kind)) fail(`${at}, связки`, `неизвестный вид «${kind}»`)
+  }
+
+  for (const kind of QUEST_FINALE_KINDS) {
+    const variants = list(`${at}, финал ${kind}`, texts.finales?.[kind])
+    if (variants.length !== QUEST_FINALE_VARIANTS) {
+      fail(`${at}, финал ${kind}`, `вариантов ${variants.length}, нужно ${QUEST_FINALE_VARIANTS}`)
+    }
+    for (const [i, finale] of variants.entries()) text(`${at}, финал ${kind} #${i + 1}`, finale, MAX_QUEST_TEXT)
+  }
+  for (const kind of Object.keys(texts.finales ?? {})) {
+    if (!QUEST_FINALE_KINDS.includes(kind)) fail(`${at}, финалы`, `неизвестный вид «${kind}»`)
+  }
+
+  for (const id of QUEST_ROLE_IDS) text(`${at}, вставка во вступление ${id}`, texts.introRoleLines?.[id], MAX_QUEST_TEXT)
+  for (const [field, lines] of [
+    ['introRoleLines', texts.introRoleLines],
+    ['finaleRoleLines', texts.finaleRoleLines],
+  ]) {
+    for (const [id, line] of Object.entries(lines ?? {})) {
+      if (!QUEST_ROLE_IDS.includes(id)) fail(`${at}, ${field}`, `неизвестная роль «${id}»`)
+      else if (field === 'finaleRoleLines') text(`${at}, вставка в финал ${id}`, line, MAX_QUEST_TEXT)
+    }
+  }
+
+  text(`${at}, introHiddenLine`, texts.introHiddenLine, MAX_QUEST_TEXT)
+  text(`${at}, nightText`, texts.nightText, MAX_QUEST_TEXT)
+  text(`${at}, council`, texts.council, MAX_QUEST_TEXT)
+}
+
 // --- Итог ---
 
 if (problems.length > 0) {
@@ -382,6 +481,12 @@ const danetkiStats = LANGS.map((lang) => {
   const dark = list.filter((danetka) => danetka.tone === 'dark').length
   return `${lang} ${list.length} (светлых ${list.length - dark}, мрачных ${dark})`
 })
+const questStats = Object.entries(questTexts)
+  .map(([lang, texts]) => {
+    const finales = QUEST_FINALE_KINDS.reduce((sum, kind) => sum + texts.finales[kind].length, 0)
+    return `Quest ${lang}: походов ${texts.tales.length}, вступлений ${texts.intros.length}, финалов ${finales}`
+  })
+  .join('; ')
 console.log(
-  `✓ Контент в порядке — ${stats.join('; ')}; ролей «Мафии» ${roles.length}; тем «Шпиона» ${themes.length}; уровней Alias ${aliasLevels.length}; данеток: ${danetkiStats.join(', ')}; Quest: ролей ${questRoles.length}, составов ${Object.keys(directorsCut).length}`,
+  `✓ Контент в порядке — ${stats.join('; ')}; ролей «Мафии» ${roles.length}; тем «Шпиона» ${themes.length}; уровней Alias ${aliasLevels.length}; данеток: ${danetkiStats.join(', ')}; Quest: ролей ${questRoles.length}, составов ${Object.keys(directorsCut).length}; ${questStats}`,
 )

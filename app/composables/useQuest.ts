@@ -1,5 +1,18 @@
 import { computed, effectScope, reactive, watch, type EffectScope } from 'vue'
-import { QUEST_ROLE_IDS, type QuestLineup, type QuestRoleId, type QuestSetup, type QuestState } from '~/types'
+import {
+  QUEST_FINALE_KINDS,
+  QUEST_PHASES,
+  QUEST_ROLE_IDS,
+  type QuestFinaleKind,
+  type QuestGame,
+  type QuestLineup,
+  type QuestPhase,
+  type QuestResult,
+  type QuestRoleId,
+  type QuestSetup,
+  type QuestState,
+  type QuestTexts,
+} from '~/types'
 import {
   EITHER_MIN_PLAYERS,
   HIDDEN_MAX_PLAYERS,
@@ -9,6 +22,8 @@ import {
   standardLineup,
 } from '~/quest/lineups'
 import { getQuestRole } from '~/quest/roles'
+import { decided, drawTale, isSuccess, newGame, randomIndex } from '~/quest/game'
+import { questTexts } from '~/quest/texts'
 
 const STORAGE_KEY = 'koster.quest'
 /** Потолок счётчика у неуникальных ролей: больше карт, чем игроков, не бывает. */
@@ -85,6 +100,63 @@ export function useQuest() {
     setup.roles = QUEST_ROLE_IDS.every((role) => next[role] === standard.value[role]) ? null : next
   }
 
+  // --- Партия ---
+
+  /** «Начать»: партия со снимком состава, первым делом — вступление. */
+  function startGame(texts: QuestTexts) {
+    quest.game = newGame(texts, lineup.value, setup.players)
+  }
+
+  /** Новый поход на стол: случайный несыгранный, ввод с чистого листа. */
+  function nextQuest(texts: QuestTexts) {
+    const game = quest.game
+    if (!game) return
+    const drawn = drawTale(texts, quest.playedTales, game)
+    quest.playedTales = drawn.played
+    game.currentTaleId = drawn.taleId
+    game.phase = 'quest'
+  }
+
+  /** Лидер ввёл число карт «Провал»: исход записывается в партию, счёт обновляется. */
+  function enterFails(fails: number, doubleFail: boolean) {
+    const game = quest.game
+    if (!game || game.phase !== 'quest' || game.currentTaleId === null) return
+    game.quests.push({ taleId: game.currentTaleId, fails, doubleFail, success: isSuccess(fails, doubleFail) })
+    game.phase = 'outcome'
+  }
+
+  /** «Отменить» на исходе: ввод снимается, тот же поход, счёт и сыгранные как были. */
+  function cancelOutcome() {
+    const game = quest.game
+    if (!game || game.phase !== 'outcome') return
+    game.quests.pop()
+    game.phase = 'quest'
+  }
+
+  /**
+   * Уход с исхода вперёд: поход становится сыгранным. Партия решилась — финал добра или совет,
+   * иначе передача лидерства.
+   */
+  function leaveOutcome(texts: QuestTexts) {
+    const game = quest.game
+    if (!game || game.phase !== 'outcome' || game.currentTaleId === null) return
+    if (!quest.playedTales.includes(game.currentTaleId)) quest.playedTales.push(game.currentTaleId)
+    const winner = decided(game)
+    if (winner === 'good') {
+      game.finale = { kind: 'goodQuests', variant: randomIndex(texts.finales.goodQuests.length) }
+      game.phase = 'finale'
+    } else if (winner === 'evil') {
+      game.phase = 'council'
+    } else {
+      game.phase = 'handoff'
+    }
+  }
+
+  /** Партия брошена или доиграна: следующий вход начнётся с настройки. */
+  function endGame() {
+    quest.game = null
+  }
+
   return {
     quest,
     setup,
@@ -100,6 +172,12 @@ export function useQuest() {
     chooseYouthOrTroublemaker,
     canChangeRole,
     changeRole,
+    startGame,
+    nextQuest,
+    enterFails,
+    cancelOutcome,
+    leaveOutcome,
+    endGame,
   }
 }
 
@@ -119,7 +197,7 @@ export function clearQuest() {
 }
 
 function defaults(): QuestState {
-  return { setup: { players: 5, youthOrTroublemaker: 'youth', roles: null } }
+  return { setup: { players: 5, youthOrTroublemaker: 'youth', roles: null }, playedTales: [], game: null }
 }
 
 /**
@@ -134,7 +212,13 @@ function load(): QuestState {
     raw = null
   }
   const result = defaults()
-  if (!isRecord(raw) || !isRecord(raw.setup)) return result
+  if (!isRecord(raw)) return result
+  if (Array.isArray(raw.playedTales)) {
+    const known = knownTaleIds()
+    result.playedTales = [...new Set(raw.playedTales.filter((id): id is number => typeof id === 'number' && known.has(id)))]
+  }
+  result.game = loadGame(raw.game)
+  if (!isRecord(raw.setup)) return result
   const saved = raw.setup
 
   const players = saved.players
@@ -154,6 +238,59 @@ function load(): QuestState {
     result.setup.roles = roles
   }
   return result
+}
+
+/** id походов на всех языках с текстами: неизвестные из хранилища отбрасываются. */
+function knownTaleIds(): Set<number> {
+  return new Set(Object.values(questTexts).flatMap((texts) => texts.tales.map((tale) => tale.id)))
+}
+
+/** Незаконченная партия из хранилища. Любое битое поле — партии нет: продолжать её всё равно нечем. */
+function loadGame(raw: unknown): QuestGame | null {
+  if (!isRecord(raw) || !isRecord(raw.roles)) return null
+  const tales = knownTaleIds()
+  const intros = new Set(Object.values(questTexts).flatMap((texts) => texts.intros.map((intro) => intro.id)))
+  const isCount = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0
+
+  const roles = {} as QuestLineup
+  for (const id of QUEST_ROLE_IDS) {
+    const count = raw.roles[id]
+    if (!isCount(count)) return null
+    roles[id] = count
+  }
+  const { players, introId, phase, currentTaleId, finale } = raw
+  if (!isCount(players) || players < QUEST_MIN_PLAYERS || players > QUEST_MAX_PLAYERS) return null
+  if (typeof introId !== 'number' || !intros.has(introId)) return null
+  if (typeof phase !== 'string' || !(QUEST_PHASES as readonly string[]).includes(phase)) return null
+  if (!Array.isArray(raw.quests)) return null
+
+  const quests: QuestResult[] = []
+  for (const item of raw.quests) {
+    if (!isRecord(item) || typeof item.taleId !== 'number' || !tales.has(item.taleId)) return null
+    if (!isCount(item.fails) || typeof item.doubleFail !== 'boolean') return null
+    // Исход пересчитывается по правилу, а не берётся на веру.
+    quests.push({ taleId: item.taleId, fails: item.fails, doubleFail: item.doubleFail, success: isSuccess(item.fails, item.doubleFail) })
+  }
+
+  let current: number | null = null
+  if (typeof currentTaleId === 'number' && tales.has(currentTaleId)) current = currentTaleId
+  else if (currentTaleId !== null) return null
+
+  let savedFinale: QuestGame['finale'] = null
+  if (isRecord(finale)) {
+    const kind = finale.kind
+    if (typeof kind !== 'string' || !(QUEST_FINALE_KINDS as readonly string[]).includes(kind) || !isCount(finale.variant)) {
+      return null
+    }
+    savedFinale = { kind: kind as QuestFinaleKind, variant: finale.variant }
+  } else if (finale !== null) return null
+
+  const game: QuestGame = { roles, players, introId, phase: phase as QuestPhase, quests, currentTaleId: current, finale: savedFinale }
+  // Фаза должна сходиться с тем, что лежит рядом: иначе экрану нечего показать.
+  if (['quest', 'outcome', 'handoff'].includes(game.phase) && current === null) return null
+  if (game.phase === 'outcome' && quests.at(-1)?.taleId !== current) return null
+  if (game.phase === 'finale' && !savedFinale) return null
+  return game
 }
 
 function save(quest: QuestState) {

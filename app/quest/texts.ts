@@ -1,11 +1,19 @@
-import type { Lang } from '~/types'
+// Только type-импорты из `~/types`: этот файл читает и Node-скрипт проверки контента.
+import type { Lang, QuestIntro, QuestTale, QuestTexts } from '~/types'
+import ru from './texts/ru.ts'
 
-/**
- * Режим доступен, если для языка есть тексты; Quest пишется только на русском.
- * Пока корпуса текстов нет, доступность задана списком; с текстами проверка перейдёт на них.
- */
-const QUEST_LANGS: readonly Lang[] = ['ru']
+/** Тексты Quest по языкам. Quest пишется только на русском; язык без текстов — режим скрыт. */
+export const questTexts: Partial<Record<Lang, QuestTexts>> = { ru }
 
+/** Режим доступен, если для языка есть тексты. */
 export function hasQuest(lang: Lang): boolean {
-  return QUEST_LANGS.includes(lang)
+  return questTexts[lang] !== undefined
+}
+
+export function findTale(texts: QuestTexts, id: number): QuestTale | undefined {
+  return texts.tales.find((tale) => tale.id === id)
+}
+
+export function findIntro(texts: QuestTexts, id: number): QuestIntro | undefined {
+  return texts.intros.find((intro) => intro.id === id)
 }

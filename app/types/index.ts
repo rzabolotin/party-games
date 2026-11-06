@@ -210,7 +210,86 @@ export interface QuestSetup {
   roles: Partial<QuestLineup> | null
 }
 
-/** Состояние Quest в localStorage. Сыгранные походы и партия добавятся вместе с партией. */
+/** Поход: название, завязка и три исхода. `id` — ключ прогресса, не перенумеровывается. */
+export interface QuestTale {
+  id: number
+  title: string
+  setup: string
+  /** Поход удался. */
+  success: string
+  /** Провал от одной карты «Провал». */
+  fail: string
+  /** Провал от двух карт и больше. */
+  failHeavy: string
+}
+
+/** Связки по счёту; `decisive` — обе стороны в шаге от победы. */
+export const QUEST_BRIDGE_KINDS = ['first', 'goodOnBrink', 'evilOnBrink', 'decisive'] as const
+export type QuestBridgeKind = (typeof QUEST_BRIDGE_KINDS)[number]
+
+export interface QuestIntro {
+  id: number
+  text: string
+}
+
+export const QUEST_FINALE_KINDS = [
+  'goodQuests',
+  'huntWon',
+  'huntLost',
+  'lastChanceGood',
+  'lastChanceEvil',
+  'veteransEvil',
+] as const
+export type QuestFinaleKind = (typeof QUEST_FINALE_KINDS)[number]
+
+/** Тексты Quest на одном языке. */
+export interface QuestTexts {
+  tales: QuestTale[]
+  /** По 2–3 варианта на вид. */
+  bridges: Record<QuestBridgeKind, string[]>
+  intros: QuestIntro[]
+  /** Вставки во вступление по ролям состава. */
+  introRoleLines: Partial<Record<QuestRoleId, string>>
+  /** Про роль рубашкой вверх, при 4–5 игроках. */
+  introHiddenLine: string
+  /** Объяснение ночных сигналов. */
+  nightText: string
+  council: string
+  /** По 2 варианта на вид. */
+  finales: Record<QuestFinaleKind, string[]>
+  finaleRoleLines: Partial<Record<QuestRoleId, string>>
+}
+
+export const QUEST_PHASES = ['intro', 'night', 'quest', 'outcome', 'handoff', 'council', 'lastChance', 'finale'] as const
+export type QuestPhase = (typeof QUEST_PHASES)[number]
+
+/** Сыгранный поход партии. `fails` — число карт «Провал», «3+» записывается как 3. */
+export interface QuestResult {
+  taleId: number
+  fails: number
+  doubleFail: boolean
+  success: boolean
+}
+
+/** Незаконченная партия — ровно в таком виде лежит в `koster.quest.game`. */
+export interface QuestGame {
+  /** Снимок состава на старте: правка настройки партию не меняет. */
+  roles: QuestLineup
+  players: number
+  introId: number
+  phase: QuestPhase
+  /** Походы партии по порядку. На фазе `outcome` последний — только что введённый, «Отменить» его снимает. */
+  quests: QuestResult[]
+  /** Поход на столе; null — на вступлении. */
+  currentTaleId: number | null
+  finale: { kind: QuestFinaleKind; variant: number } | null
+}
+
+/** Состояние Quest в localStorage. */
 export interface QuestState {
   setup: QuestSetup
+  /** id походов, сыгранных в прошлых партиях и уже сыгранных в текущей. */
+  playedTales: number[]
+  /** Незаконченная партия; null — нет. */
+  game: QuestGame | null
 }

@@ -182,10 +182,36 @@ export interface Messages {
   /** Предупреждения под составом: показываются, но начать не мешают; в `wrongCount` {m} — сколько нужно. */
   questWarnings: Record<'nonStandard' | 'wrongCount', string>
   questStart: string
-  /** Заглушка вместо партии, пока её нет. */
+  /** Заглушка вместо Финального совета, пока его нет. */
   questStub: string
   questToSetup: string
   questNoTexts: string
+  questResumeTitle: string
+  questResume: string
+  questNewGame: string
+  /** Переход со вступления к первому походу, пока ночи нет. */
+  questNext: string
+  /** {n} — номер похода. */
+  questNumber: string
+  questTokensHint: string
+  questTeamSize: string
+  questDoubleFail: string
+  questFailsPrompt: string
+  /** Кнопка «три и больше» в вводе провалов. */
+  questFailsMore: string
+  questOutcome: Record<'success' | 'fail', string>
+  /** Под заголовком исхода: {n} — сколько карт «Провал». */
+  questFailsCount: string
+  questCancel: string
+  questPassLeadership: string
+  questToFinale: string
+  questToCouncil: string
+  questHandoffTitle: string
+  /** Подсказки передачи лидерства — по пункту на строку. */
+  questHandoffRules: string[]
+  questNewLeader: string
+  questGoodWins: string
+  questCouncil: string
 }
 
 /** Названия языков — на самом языке, чтобы переключатель читался при любом текущем. */
@@ -378,9 +404,35 @@ export const messages: Record<Lang, Messages> = {
       wrongCount: 'Сумма карт не сходится: нужно {m}.',
     },
     questStart: 'Начать',
-    questStub: 'Партия появится в следующей версии.',
+    questStub: 'Финальный совет появится в следующей версии.',
     questToSetup: 'К настройке',
     questNoTexts: 'Quest пока есть только на русском.',
+    questResumeTitle: 'Продолжить партию?',
+    questResume: 'Продолжить',
+    questNewGame: 'Новая партия',
+    questNext: 'Дальше',
+    questNumber: 'Поход {n}',
+    questTokensHint: 'Раздай жетоны отряда и жетон магии.',
+    questTeamSize: 'Размер отряда — смотри планшет.',
+    questDoubleFail: 'В этом походе нужно 2 провала',
+    questFailsPrompt: 'Сколько карт «Провал»?',
+    questFailsMore: '3+',
+    questOutcome: { success: 'Успех', fail: 'Провал' },
+    questFailsCount: 'Карт «Провал»: {n}',
+    questCancel: 'Отменить',
+    questPassLeadership: 'Передать лидерство',
+    questToFinale: 'К финалу',
+    questToCouncil: 'К совету',
+    questHandoffTitle: 'Передача лидерства',
+    questHandoffRules: [
+      'Если на планшете у этого похода амулет — лидер вручает его игроку, у которого амулета ещё нет. Себе вручить нельзя.',
+      'Держатель амулета выбирает другого игрока и тайно смотрит, на чьей он стороне.',
+      'Новый лидер — игрок, который ещё не был лидером (не ветеран) и не держит амулет.',
+      'Отдай новому лидеру жетон лидера и телефон.',
+    ],
+    questNewLeader: 'Я новый лидер',
+    questGoodWins: 'Победа добра',
+    questCouncil: 'Финальный совет',
   },
   en: {
     deckTypes: {
@@ -565,8 +617,34 @@ export const messages: Record<Lang, Messages> = {
       wrongCount: 'The card count is off: {m} needed.',
     },
     questStart: 'Start',
-    questStub: 'The game itself is coming in the next version.',
+    questStub: 'The Final Council is coming in the next version.',
     questToSetup: 'Back to setup',
     questNoTexts: 'Quest is only available in Russian for now.',
+    questResumeTitle: 'Continue the game?',
+    questResume: 'Continue',
+    questNewGame: 'New game',
+    questNext: 'Next',
+    questNumber: 'Quest {n}',
+    questTokensHint: 'Hand out the team tokens and the magic token.',
+    questTeamSize: 'Team size — see the tableau.',
+    questDoubleFail: 'This quest needs 2 fails',
+    questFailsPrompt: 'How many Fail cards?',
+    questFailsMore: '3+',
+    questOutcome: { success: 'Success', fail: 'Fail' },
+    questFailsCount: 'Fail cards: {n}',
+    questCancel: 'Undo',
+    questPassLeadership: 'Pass leadership',
+    questToFinale: 'To the finale',
+    questToCouncil: 'To the council',
+    questHandoffTitle: 'Passing leadership',
+    questHandoffRules: [
+      'If the tableau shows an amulet for this quest, the leader gives it to a player who has no amulet yet. Not to themselves.',
+      'The amulet holder picks another player and secretly checks their loyalty.',
+      'The new leader is a player who has not led yet (not a veteran) and holds no amulet.',
+      'Give the new leader the leader token and the phone.',
+    ],
+    questNewLeader: 'I’m the new leader',
+    questGoodWins: 'Good triumphs',
+    questCouncil: 'Final Council',
   },
 }
