@@ -9,9 +9,11 @@ import {
   FINALE_WINNER,
   GOOD_WINS,
   LAST_CHANCE_ROLES,
+  bridge,
   decided,
   evilThreshold,
   finaleRoleLines,
+  introLines,
   outcomeText,
   score,
 } from '~/quest/game'
@@ -89,6 +91,12 @@ function toSetup() {
 // --- Партия ---
 
 const intro = computed(() => (game.value && texts.value ? findIntro(texts.value, game.value.introId) : undefined))
+/** Вставки во вступление по составу партии и строка про роль рубашкой вверх при 4–5 игроках. */
+const introRoleLines = computed(() =>
+  game.value && texts.value ? introLines(texts.value, game.value.roles, game.value.players) : [],
+)
+/** Связка по счёту перед завязкой похода; не подходит ни одна — её нет. */
+const questBridge = computed(() => (game.value && texts.value ? bridge(texts.value, game.value) : null))
 const tale = computed(() =>
   game.value?.currentTaleId != null && texts.value ? findTale(texts.value, game.value.currentTaleId) : undefined,
 )
@@ -631,6 +639,7 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
       <template v-if="game.phase === 'intro' || game.phase === 'night'">
         <div class="body">
           <p class="reading">{{ intro?.text }}</p>
+          <p v-if="introRoleLines.length > 0" class="reading">{{ introRoleLines.join(' ') }}</p>
           <h2 class="tale-title">{{ t.questNightTitle }}</h2>
           <p class="reading">{{ night }}</p>
         </div>
@@ -667,6 +676,7 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
             <p class="reading">{{ outcomeText(tale, result) }}</p>
           </template>
           <template v-else>
+            <p v-if="questBridge" class="bridge">{{ questBridge }}</p>
             <h2 class="tale-title">{{ tale.title }}</h2>
             <p class="reading">{{ tale.setup }}</p>
             <ul class="hints">
@@ -1184,6 +1194,16 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
   font-size: calc(24px * var(--font-scale));
   font-weight: 700;
   line-height: 1.2;
+  overflow-wrap: break-word;
+}
+
+/* Связка по счёту — курсивом над названием похода, читается вслух вместе с завязкой. */
+.bridge {
+  margin: 0 4px 12px;
+  color: var(--muted);
+  font-size: calc(18px * var(--font-scale));
+  font-style: italic;
+  line-height: 1.4;
   overflow-wrap: break-word;
 }
 

@@ -1,5 +1,6 @@
-// Только type-импорты: правила партии Quest без Vue и хранилища.
-import type { QuestFinaleKind, QuestGame, QuestLineup, QuestResult, QuestRoleId, QuestTale, QuestTexts } from '~/types'
+// Только type-импорты из `~/types` и относительный импорт с расширением: правила партии Quest без Vue и хранилища.
+import type { QuestBridgeKind, QuestFinaleKind, QuestGame, QuestLineup, QuestResult, QuestRoleId, QuestTale, QuestTexts } from '~/types'
+import { HIDDEN_MAX_PLAYERS } from './lineups.ts'
 
 /** Добро побеждает после стольких успехов. */
 export const GOOD_WINS = 3
@@ -54,11 +55,47 @@ export function finale(texts: QuestTexts, kind: QuestFinaleKind): NonNullable<Qu
   return { kind, variant: randomIndex(texts.finales[kind].length) }
 }
 
-/** Вставки в финал по ролям состава, в порядке справочника. */
+/** Строки ролей состава из словаря вставок, в порядке справочника. */
+function roleLines(lines: Partial<Record<QuestRoleId, string>>, roles: QuestLineup): string[] {
+  return (Object.keys(roles) as QuestRoleId[]).filter((id) => roles[id] > 0).flatMap((id) => lines[id] ?? [])
+}
+
+/** Вставки в финал по ролям состава. */
 export function finaleRoleLines(texts: QuestTexts, roles: QuestLineup): string[] {
-  return (Object.keys(roles) as QuestRoleId[])
-    .filter((id) => roles[id] > 0)
-    .flatMap((id) => texts.finaleRoleLines[id] ?? [])
+  return roleLines(texts.finaleRoleLines, roles)
+}
+
+/**
+ * Вступление по составу: строки ролей, затем — при 4–5 игроках —
+ * строка про роль, что лежит рубашкой вверх.
+ */
+export function introLines(texts: QuestTexts, roles: QuestLineup, players: number): string[] {
+  const lines = roleLines(texts.introRoleLines, roles)
+  return players <= HIDDEN_MAX_PLAYERS ? [...lines, texts.introHiddenLine] : lines
+}
+
+/**
+ * Связка перед завязкой по счёту, по приоритету: обе стороны в шаге от победы → зло в шаге →
+ * добро в шаге → первый поход; иначе связки нет. Вариант выбирается по id похода,
+ * чтобы после перезагрузки звучал тот же.
+ */
+export function bridge(texts: QuestTexts, game: Pick<QuestGame, 'quests' | 'players' | 'currentTaleId'>): string | null {
+  const { good, evil } = score(game)
+  const goodOnBrink = good === GOOD_WINS - 1
+  const evilOnBrink = evil === evilThreshold(game.players) - 1
+  const kind: QuestBridgeKind | null =
+    goodOnBrink && evilOnBrink
+      ? 'decisive'
+      : evilOnBrink
+        ? 'evilOnBrink'
+        : goodOnBrink
+          ? 'goodOnBrink'
+          : game.quests.length === 0
+            ? 'first'
+            : null
+  if (!kind) return null
+  const variants = texts.bridges[kind]
+  return variants[(game.currentTaleId ?? 0) % variants.length] ?? null
 }
 
 /** Новая партия: вступление, походов ещё нет. */
