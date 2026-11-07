@@ -66,11 +66,11 @@ export function finaleRoleLines(texts: QuestTexts, roles: QuestLineup): string[]
 }
 
 /**
- * Вступление по составу: строки ролей, затем — при 4–5 игроках —
+ * Вступление по составу: «кто есть кто», строки ролей, затем — при 4–5 игроках —
  * строка про роль, что лежит рубашкой вверх.
  */
 export function introLines(texts: QuestTexts, roles: QuestLineup, players: number): string[] {
-  const lines = roleLines(texts.introRoleLines, roles)
+  const lines = [texts.introLore, ...roleLines(texts.introRoleLines, roles)]
   return players <= HIDDEN_MAX_PLAYERS ? [...lines, texts.introHiddenLine] : lines
 }
 

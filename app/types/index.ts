@@ -277,6 +277,8 @@ export interface QuestTexts {
   /** По 2–3 варианта на вид. */
   bridges: Record<QuestBridgeKind, string[]>
   intros: QuestIntro[]
+  /** Кто есть кто: Артур и Мордред. Идёт в каждой партии сразу после вступления. */
+  introLore: string
   /** Вставки во вступление по ролям состава. */
   introRoleLines: Partial<Record<QuestRoleId, string>>
   /** Про роль рубашкой вверх, при 4–5 игроках. */

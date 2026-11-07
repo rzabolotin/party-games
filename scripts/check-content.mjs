@@ -448,6 +448,7 @@ for (const [lang, texts] of Object.entries(questTexts)) {
   if (intros.length === 0) fail(`${at}, вступления`, 'нет ни одного вступления')
   withIds(`${at}, вступление`, intros)
   for (const [i, intro] of intros.entries()) text(`${at}, вступление #${i + 1}`, intro?.text, MAX_QUEST_TEXT)
+  text(`${at}, introLore`, texts.introLore, MAX_QUEST_TEXT)
 
   for (const kind of QUEST_BRIDGE_KINDS) {
     const variants = list(`${at}, связки ${kind}`, texts.bridges?.[kind])

@@ -90,7 +90,7 @@ function toSetup() {
 // --- Партия ---
 
 const intro = computed(() => (game.value && texts.value ? findIntro(texts.value, game.value.introId) : undefined))
-/** Вставки во вступление по составу партии и строка про роль рубашкой вверх при 4–5 игроках. */
+/** «Кто есть кто», вставки во вступление по составу партии и строка про роль рубашкой вверх при 4–5 игроках. */
 const introRoleLines = computed(() =>
   game.value && texts.value ? introLines(texts.value, game.value.roles, game.value.players) : [],
 )

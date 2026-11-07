@@ -87,7 +87,7 @@ export const questRoles: QuestRole[] = [
   {
     id: 'morgan',
     side: 'evil',
-    title: 'Моргана Фея',
+    title: 'Моргана',
     original: 'Morgan le Fey',
     ability: 'Жетон магии на неё не действует: даже с ним она вольна сыграть «Провал».',
     unique: true,
