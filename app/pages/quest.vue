@@ -262,13 +262,22 @@ function lastChance() {
   toLastChance()
 }
 
+/** При 4–5 игроках одна роль добра лежит рубашкой вверх — это поминают правила Охоты и справка. */
+const hiddenCard = computed(() => (game.value?.players ?? 0) <= HIDDEN_MAX_PLAYERS)
+
+/** Строки вмешательства в Последний шанс — только для ролей из состава; их берут подсказка фазы и справка. */
+const lastChanceRoleLines = computed(() => {
+  const roles = game.value?.roles
+  return LAST_CHANCE_ROLES.filter((id) => (roles?.[id] ?? 0) > 0).map((id) => t.value.questLastChanceRules.roles[id])
+})
+
 /** Правила Охоты для этой партии: про карту рубашкой вверх и про герцогов — только если это про нас. */
 const huntRules = computed(() => {
   const rules = t.value.questHuntRules
   const roles = game.value?.roles
   return [
     ...rules.base,
-    ...((game.value?.players ?? 0) <= HIDDEN_MAX_PLAYERS ? [rules.hidden] : []),
+    ...(hiddenCard.value ? [rules.hidden] : []),
     ...(roles && (roles.duke > 0 || roles.archduke > 0) ? [rules.dukes] : []),
     rules.verdict,
   ]
@@ -277,10 +286,9 @@ const huntRules = computed(() => {
 /** Подсказка Последнего шанса: строки вмешательства — только для ролей из состава. */
 const lastChanceRules = computed(() => {
   const rules = t.value.questLastChanceRules
-  const roles = game.value?.roles
   return [
     rules.point,
-    ...LAST_CHANCE_ROLES.filter((id) => (roles?.[id] ?? 0) > 0).map((id) => rules.roles[id]),
+    ...lastChanceRoleLines.value,
     rules.verdict,
     rules.veterans,
   ]
@@ -304,6 +312,74 @@ function playAgain() {
 }
 
 const FAIL_OPTIONS = [0, 1, 2, 3] as const
+
+// --- Справка ---
+
+/**
+ * Слой справки поверх фазы. Живёт только на экране и в партию не пишется: открытие и закрытие
+ * ничего не сбрасывают, а после перезагрузки партия просто на своей фазе, без справки.
+ * Ночью кнопки нет — чёрный экран закрывает и шапку.
+ */
+const helpOpen = ref(false)
+
+/** Роли этой партии в порядке справочника, с числом карт. */
+const helpRoles = computed(() => {
+  const roles = game.value?.roles
+  return roles ? questRoles.filter((role) => roles[role.id] > 0).map((role) => ({ role, count: roles[role.id] })) : []
+})
+
+/** Номер похода — пока он на столе или ещё впереди; после решения партии остаётся только счёт. */
+const helpShowsQuest = computed(() => {
+  const phase = game.value?.phase
+  return phase === 'intro' || phase === 'quest' || phase === 'outcome' || phase === 'handoff'
+})
+/** «Нужно 2 провала» — то, что включено на вводе, или то, с чем введён исход. */
+const helpDoubleFail = computed(() => {
+  const phase = game.value?.phase
+  return (phase === 'quest' && doubleFail.value) || (phase === 'outcome' && result.value?.doubleFail === true)
+})
+const helpScore = computed(() =>
+  t.value.questHelpScore
+    .replace('{good}', String(currentScore.value.good))
+    .replace('{evil}', String(currentScore.value.evil))
+    .replace('{need}', String(evilSlots.value)),
+)
+
+/**
+ * Подсказка фазы. В совете строка про Охоту — если Охотник в составе, а объявленной Охоте — своя подсказка;
+ * в Последнем шансе — строки ролей состава.
+ */
+const helpNow = computed(() => {
+  const phases = t.value.questHelpPhases
+  switch (game.value?.phase) {
+    case 'council':
+      if (hunting.value) return phases.hunt
+      return [...phases.council.base, ...(game.value.roles.hunter > 0 ? [phases.council.hunter] : [])]
+    case 'lastChance':
+      return [phases.lastChance.point, ...lastChanceRoleLines.value, phases.lastChance.result]
+    case 'quest':
+    case 'outcome':
+    case 'handoff':
+    case 'finale':
+      return phases[game.value.phase]
+    default:
+      return phases.intro
+  }
+})
+
+/** Партия ушла со страницы или закончилась — справка не висит над другим экраном. */
+watch(
+  () => stage.value === 'game' && game.value !== null,
+  (inGame) => {
+    if (!inGame) helpOpen.value = false
+  },
+)
+
+function onHelpKey(event: KeyboardEvent) {
+  if (event.key === 'Escape' && helpOpen.value) helpOpen.value = false
+}
+onMounted(() => document.addEventListener('keydown', onHelpKey))
+onBeforeUnmount(() => document.removeEventListener('keydown', onHelpKey))
 
 // --- Экран настройки ---
 
@@ -496,7 +572,60 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
       <header class="top">
         <NuxtLink to="/" class="back">← {{ t.decks }}</NuxtLink>
         <h1 class="title">{{ t.quest }}</h1>
+        <button
+          type="button"
+          class="help-button"
+          :aria-label="t.questHelp"
+          aria-haspopup="dialog"
+          :aria-expanded="helpOpen"
+          @click="helpOpen = true"
+        >
+          ?
+        </button>
       </header>
+
+      <!-- Справка: слой поверх фазы, сама фаза под ним не трогается -->
+      <div v-if="helpOpen" class="help" role="dialog" aria-modal="true" :aria-label="t.questHelp">
+        <header class="top">
+          <h2 class="title">{{ t.questHelp }}</h2>
+          <button type="button" class="help-close" @click="helpOpen = false">{{ t.questHelpClose }}</button>
+        </header>
+        <div class="body">
+          <section class="group">
+            <h3 class="group-title">{{ t.questHelpNow }}</h3>
+            <ul class="rules">
+              <li v-for="line in helpNow" :key="line">{{ line }}</li>
+            </ul>
+          </section>
+
+          <section class="group">
+            <h3 class="group-title">{{ t.questHelpQuest }}</h3>
+            <ul class="hints help-quest">
+              <li v-if="helpShowsQuest" class="help-number">{{ t.questNumber.replace('{n}', String(questNumber)) }}</li>
+              <li>{{ helpScore }}</li>
+              <li v-if="helpDoubleFail">{{ t.questHelpDoubleFail }}</li>
+              <li v-if="helpShowsQuest">{{ t.questTeamSize }}</li>
+            </ul>
+          </section>
+
+          <section class="group">
+            <h3 class="group-title">{{ t.questHelpRoles }}</h3>
+            <ul class="roles">
+              <li v-for="{ role, count } in helpRoles" :key="role.id" class="role" :class="`side-${role.side}`">
+                <div class="role-text help-role">
+                  <p class="row-title">
+                    {{ role.title }} <span class="original">({{ role.original }})</span>
+                    <span v-if="count > 1" class="help-count">× {{ count }}</span>
+                  </p>
+                  <p class="role-side">{{ t.questSides[role.side] }}</p>
+                  <p class="role-ability">{{ role.ability }}</p>
+                </div>
+              </li>
+            </ul>
+            <p v-if="hiddenCard" class="note">{{ t.questHelpHidden }}</p>
+          </section>
+        </div>
+      </div>
 
       <!-- Вступление, за ним текст про ночь; ночью поверх — чёрный экран с маленькой «Прервать» -->
       <template v-if="game.phase === 'intro' || game.phase === 'night'">
@@ -1208,6 +1337,77 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
   flex: none;
   min-height: 48px;
   font-size: 18px;
+}
+
+/* --- Справка: слой во весь экран поверх фазы, ниже чёрного экрана ночи --- */
+
+.help-button {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--accent);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.help-button:active {
+  background: var(--surface-active);
+}
+
+.help {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) calc(env(safe-area-inset-right, 0px) + 16px)
+    calc(env(safe-area-inset-bottom, 0px) + 16px) calc(env(safe-area-inset-left, 0px) + 16px);
+  background: var(--bg);
+  overscroll-behavior: contain;
+}
+
+.help-close {
+  flex: none;
+  margin-left: auto;
+  padding: 8px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.help-quest {
+  color: var(--fg);
+  font-size: calc(18px * var(--font-scale));
+}
+
+.help-number {
+  font-weight: 700;
+}
+
+.help-role {
+  padding-top: 12px;
+}
+
+.help-role .row-title {
+  margin: 0 0 6px;
+}
+
+.help-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Ночь: чёрный экран поверх всего, ничего не подсвечивает --- */

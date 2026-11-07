@@ -237,6 +237,27 @@ export interface Messages {
   }
   questLastChanceQuestion: string
   questLastChanceResults: Record<'lastChanceGood' | 'lastChanceEvil' | 'veteransEvil', string>
+  /** Кнопка справки в шапке партии и заголовок её слоя. */
+  questHelp: string
+  questHelpClose: string
+  questHelpRoles: string
+  /** Под ролями партии при 4–5 игроках. */
+  questHelpHidden: string
+  questHelpQuest: string
+  /** Счёт в справке: {good} и {evil} — сколько походов у каждой стороны, {need} — порог провалов. */
+  questHelpScore: string
+  questHelpDoubleFail: string
+  questHelpNow: string
+  /**
+   * Что делать на каждой фазе — по пункту на строку. Ночью справка недоступна (экран чёрный),
+   * поэтому ночь описана во вступлении. В совете `hunter` — только если Охотник в составе,
+   * а объявленной Охоте вместо совета — `hunt`;
+   * в Последнем шансе между `point` и `result` встают строки `questLastChanceRules.roles` ролей состава.
+   */
+  questHelpPhases: Record<'intro' | 'quest' | 'outcome' | 'handoff' | 'hunt' | 'finale', string[]> & {
+    council: { base: string[]; hunter: string }
+    lastChance: { point: string; result: string }
+  }
 }
 
 /** Названия языков — на самом языке, чтобы переключатель читался при любом текущем. */
@@ -501,6 +522,53 @@ export const messages: Record<Lang, Messages> = {
       lastChanceEvil: 'Добро ошиблось',
       veteransEvil: 'Все ветераны злые',
     },
+    questHelp: 'Справка',
+    questHelpClose: 'Закрыть',
+    questHelpRoles: 'Роли партии',
+    questHelpHidden: 'Одна роль добра лежит рубашкой вверх под планшетом — её нет ни у кого из игроков.',
+    questHelpQuest: 'Поход',
+    questHelpScore: 'Успехов {good} из 3, провалов {evil} из {need}',
+    questHelpDoubleFail: 'В этом походе нужно 2 провала.',
+    questHelpNow: 'Что делать сейчас',
+    questHelpPhases: {
+      intro: [
+        'Лидер читает вслух вступление, а за ним текст про ночь.',
+        'Когда все готовы, лидер жмёт «Начать ночь», кладёт телефон экраном вниз и закрывает глаза.',
+        'Ночью телефон подаёт сигналы с паузами: открывайте и закрывайте глаза по ним. Фанфары — все открывают глаза.',
+      ],
+      quest: [
+        'Лидер читает завязку похода и выбирает отряд — сколько игроков, смотри планшет.',
+        'Лидер раздаёт жетоны отряда и жетон магии. Отряд тайно играет карты, лидер их перемешивает и вскрывает.',
+        'Если на планшете у похода нужно 2 провала — включи переключатель. Затем введи число карт «Провал».',
+      ],
+      outcome: [
+        'Лидер читает исход похода вслух.',
+        'Ошиблись с числом провалов — «Отменить» вернёт к вводу того же похода.',
+        'Дальше — «Передать лидерство», а если партия решилась — к финалу или совету.',
+      ],
+      handoff: [
+        'Если на планшете у этого похода амулет — его вручают, и держатель тайно смотрит сторону другого игрока.',
+        'Новым лидером становится тот, кто ещё не был лидером и не держит амулет.',
+        'Телефон и жетон лидера уходят новому лидеру, он жмёт «Я новый лидер».',
+      ],
+      council: {
+        base: [
+          'Зло провалило походы — но добро ещё может победить.',
+          'Стол обсуждает, кто злодей, до 5 минут — таймер на экране.',
+          'Время вышло или стол готов — «К Последнему шансу».',
+        ],
+        hunter: 'Слепой Охотник может в любой момент открыться и объявить Охоту — тогда «Охотник объявил Охоту».',
+      },
+      hunt: [
+        'Охотник открыл карту и называет двух добрых игроков по ролям — одним из них должен быть Клирик.',
+        'Отметь, угадал ли Охотник обе роли. Охоту объявили по ошибке — «Охоты не было».',
+      ],
+      lastChance: {
+        point: 'Все одновременно указывают на двух игроков, которых считают злодеями. Злодеи опускают руки.',
+        result: 'Отметь итог одной из трёх кнопок.',
+      },
+      finale: ['Лидер читает финал вслух.', '«Новая партия» — тот же состав и новое вступление, «К настройке» — сменить состав.'],
+    },
   },
   en: {
     deckTypes: {
@@ -756,6 +824,53 @@ export const messages: Record<Lang, Messages> = {
       lastChanceGood: 'Good pointed right',
       lastChanceEvil: 'Good missed',
       veteransEvil: 'All Veterans are Evil',
+    },
+    questHelp: 'Help',
+    questHelpClose: 'Close',
+    questHelpRoles: 'Roles in this game',
+    questHelpHidden: 'One Good role lies face down under the tableau — no player has it.',
+    questHelpQuest: 'Quest',
+    questHelpScore: 'Successes {good} of 3, fails {evil} of {need}',
+    questHelpDoubleFail: 'This quest needs 2 fails.',
+    questHelpNow: 'What to do now',
+    questHelpPhases: {
+      intro: [
+        'The leader reads the intro aloud, then the night text.',
+        'When everyone is ready, the leader taps “Start the night”, puts the phone face down and closes their eyes.',
+        'At night the phone plays signals with pauses: open and close your eyes on them. Fanfare — everyone opens their eyes.',
+      ],
+      quest: [
+        'The leader reads the quest setup and picks the team — for its size, see the tableau.',
+        'The leader hands out the team tokens and the magic token. The team plays cards in secret, the leader shuffles and reveals them.',
+        'If the tableau says this quest needs 2 fails, turn the switch on. Then enter the number of Fail cards.',
+      ],
+      outcome: [
+        'The leader reads the outcome aloud.',
+        'Wrong number of fails — “Undo” goes back to the same quest.',
+        'Next is “Pass leadership”, or the finale or the council if the game is decided.',
+      ],
+      handoff: [
+        'If the tableau shows an amulet for this quest, it is given out, and its holder secretly checks another player’s side.',
+        'The new leader is someone who has not led yet and holds no amulet.',
+        'The phone and the leader token go to the new leader, who taps “I’m the new leader”.',
+      ],
+      council: {
+        base: [
+          'Evil has failed the quests — but Good can still win.',
+          'The table discusses who is Evil for up to 5 minutes — the timer is on the screen.',
+          'Time is up or the table is ready — “To the Last Chance”.',
+        ],
+        hunter: 'The Blind Hunter may reveal at any time and start the Hunt — then “The Hunter called the Hunt”.',
+      },
+      hunt: [
+        'The Hunter has revealed and names two Good players by role — one of them must be the Cleric.',
+        'Mark whether the Hunter named both roles right. Hunt called by mistake — “No Hunt after all”.',
+      ],
+      lastChance: {
+        point: 'Everyone points at the same time at two players they think are Evil. Evil players lower their hands.',
+        result: 'Mark the result with one of the three buttons.',
+      },
+      finale: ['The leader reads the finale aloud.', '“New game” — same lineup and a new intro, “Back to setup” — change the lineup.'],
     },
   },
 }
