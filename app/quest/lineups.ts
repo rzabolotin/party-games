@@ -1,16 +1,16 @@
 // Только type-импорты: этот файл читает и Node-скрипт проверки контента.
-import type { QuestLineup, QuestSetup } from '~/types'
+import type { QuestLineup } from '~/types'
 
 export const QUEST_MIN_PLAYERS = 4
-export const QUEST_MAX_PLAYERS = 10
-/** С этого числа игроков ячейка «1 of either»: Юнец или Смутьян на выбор. */
-export const EITHER_MIN_PLAYERS = 6
+export const QUEST_MAX_PLAYERS = 12
+/** Последняя строка таблицы и планшет на 10; при большем числе игроков берутся они. */
+export const TABLE_MAX_PLAYERS = 10
 /** До этого числа игроков включительно одна роль добра лежит рубашкой вверх. */
 export const HIDDEN_MAX_PLAYERS = 5
 
 /**
- * Таблица Director's Cut: число игроков → состав. Ячейка «1 of either» записана как Юнец,
- * Смутьяна подставляет переключатель (`standardLineup`). Ролей из коробки (Ученик, Артур и др.) в таблице нет.
+ * Таблица Director's Cut: число игроков → состав. Ячейка «1 of either» записана как Юнец:
+ * Смутьян вместо него — ручная правка, и состав считается нестандартным. Ролей из коробки (Ученик, Артур и др.) в таблице нет.
  * Источник — «Quest Director's Cut Rules Summary» (2024-09-01), лежит в `drafts/`.
  */
 export const directorsCut: Record<number, QuestLineup> = {
@@ -28,14 +28,9 @@ export function expectedCards(players: number): number {
   return players <= HIDDEN_MAX_PLAYERS ? players + 1 : players
 }
 
-/** Состав по таблице с учётом переключателя «Юнец / Смутьян». */
-export function standardLineup(setup: Pick<QuestSetup, 'players' | 'youthOrTroublemaker'>): QuestLineup {
-  const base = { ...(directorsCut[setup.players] ?? directorsCut[QUEST_MIN_PLAYERS]!) }
-  if (setup.players >= EITHER_MIN_PLAYERS && setup.youthOrTroublemaker === 'troublemaker') {
-    base.troublemaker = base.youth
-    base.youth = 0
-  }
-  return base
+/** Состав по таблице; больше 10 игроков — строка на 10, недостающие карты стол добавляет сам. */
+export function standardLineup(players: number): QuestLineup {
+  return { ...(directorsCut[Math.min(players, TABLE_MAX_PLAYERS)] ?? directorsCut[QUEST_MIN_PLAYERS]!) }
 }
 
 function row(counts: Partial<QuestLineup>): QuestLineup {

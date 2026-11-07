@@ -172,7 +172,6 @@ export interface Messages {
   questTagline: string
   questPlayersCount: string
   questSides: Record<'good' | 'evil', string>
-  questYouthOrTroublemaker: string
   /** Пометка при 4–5 игроках. */
   questHiddenNote: string
   /** Сумма карт под составом: {n} — в составе, {m} — нужно. */
@@ -193,7 +192,10 @@ export interface Messages {
   /** {n} — номер похода. */
   questNumber: string
   questTokensHint: string
+  /** Размер отряда по планшету: {n} — сколько игроков. */
   questTeamSize: string
+  /** На 4 игрока два планшета, и на 3-м и 4-м походах размеры разные: {a} или {b}. */
+  questTeamSizeEither: string
   questDoubleFail: string
   questFailsPrompt: string
   /** Кнопка «три и больше» в вводе провалов. */
@@ -206,8 +208,8 @@ export interface Messages {
   questToFinale: string
   questToCouncil: string
   questHandoffTitle: string
-  /** Подсказки передачи лидерства — по пункту на строку. */
-  questHandoffRules: string[]
+  /** Подсказки передачи лидерства — по пункту на строку; `amulet` — только после похода с амулетом на планшете. */
+  questHandoffRules: { amulet: string[]; leader: string[] }
   questNewLeader: string
   /** Заголовок над текстом финала — кто и как победил. */
   questFinaleTitles: Record<QuestFinaleKind, string>
@@ -253,7 +255,9 @@ export interface Messages {
    * а объявленной Охоте вместо совета — `hunt`;
    * в Последнем шансе между `point` и `result` встают строки `questLastChanceRules.roles` ролей состава.
    */
-  questHelpPhases: Record<'intro' | 'quest' | 'outcome' | 'handoff' | 'hunt' | 'finale', string[]> & {
+  questHelpPhases: Record<'intro' | 'quest' | 'outcome' | 'hunt' | 'finale', string[]> & {
+    /** `amulet` — первой строкой, только после похода с амулетом на планшете. */
+    handoff: { amulet: string; base: string[] }
     council: { base: string[]; hunter: string; revealer: string }
     lastChance: { point: string; result: string }
   }
@@ -440,7 +444,6 @@ export const messages: Record<Lang, Messages> = {
     questTagline: 'Помощник для настольной игры Quest',
     questPlayersCount: 'Игроков',
     questSides: { good: 'Добро', evil: 'Зло' },
-    questYouthOrTroublemaker: 'Юнец или Смутьян',
     questHiddenNote: 'Карт на одну больше, чем игроков: одну роль добра положите рубашкой вверх под планшет.',
     questCards: 'Карт в составе: {n} из {m}',
     questWarnings: {
@@ -458,7 +461,8 @@ export const messages: Record<Lang, Messages> = {
     questStopNight: 'Прервать',
     questNumber: 'Поход {n}',
     questTokensHint: 'Раздай жетоны отряда и жетон магии.',
-    questTeamSize: 'Размер отряда — смотри планшет.',
+    questTeamSize: 'Размер отряда: {n}.',
+    questTeamSizeEither: 'Размер отряда: {a} или {b} — смотря какой у вас планшет.',
     questDoubleFail: 'В этом походе нужно 2 провала',
     questFailsPrompt: 'Сколько карт «Провал»?',
     questFailsMore: '3+',
@@ -469,12 +473,16 @@ export const messages: Record<Lang, Messages> = {
     questToFinale: 'К финалу',
     questToCouncil: 'К совету',
     questHandoffTitle: 'Передача лидерства',
-    questHandoffRules: [
-      'Если на планшете у этого похода амулет — лидер вручает его игроку, у которого амулета ещё нет. Себе вручить нельзя.',
-      'Держатель амулета выбирает другого игрока и тайно смотрит, на чьей он стороне.',
-      'Новый лидер — игрок, который ещё не был лидером (не ветеран) и не держит амулет.',
-      'Отдай новому лидеру жетон лидера и телефон.',
-    ],
+    questHandoffRules: {
+      amulet: [
+        'После этого похода — амулет. Лидер вручает его игроку, у которого амулета ещё нет. Себе вручить нельзя.',
+        'Держатель амулета выбирает другого игрока и тайно смотрит, на чьей он стороне.',
+      ],
+      leader: [
+        'Новый лидер — игрок, который ещё не был лидером (не ветеран) и не держит амулет.',
+        'Отдай новому лидеру жетон лидера и телефон.',
+      ],
+    },
     questNewLeader: 'Я новый лидер',
     questFinaleTitles: {
       goodQuests: 'Победа добра',
@@ -536,20 +544,22 @@ export const messages: Record<Lang, Messages> = {
         'Ночью телефон подаёт сигналы с паузами: открывайте и закрывайте глаза по ним. Фанфары — все открывают глаза.',
       ],
       quest: [
-        'Лидер читает завязку похода и выбирает отряд — сколько игроков, смотри планшет.',
+        'Лидер читает завязку похода и выбирает отряд — размер отряда на экране похода.',
         'Лидер раздаёт жетоны отряда и жетон магии. Отряд тайно играет карты, лидер их перемешивает и вскрывает.',
-        'Если на планшете у похода нужно 2 провала — включи переключатель. Затем введи число карт «Провал».',
+        'Где по планшету нужно 2 провала, переключатель включится сам — стол может его снять. Затем введи число карт «Провал».',
       ],
       outcome: [
         'Лидер читает исход похода вслух.',
         'Ошиблись с числом провалов — «Отменить» вернёт к вводу того же похода.',
         'Дальше — «Передать лидерство», а если партия решилась — к финалу или совету.',
       ],
-      handoff: [
-        'Если на планшете у этого похода амулет — его вручают, и держатель тайно смотрит сторону другого игрока.',
-        'Новым лидером становится тот, кто ещё не был лидером и не держит амулет.',
-        'Телефон и жетон лидера уходят новому лидеру, он жмёт «Я новый лидер».',
-      ],
+      handoff: {
+        amulet: 'После этого похода вручают амулет, и держатель тайно смотрит сторону другого игрока.',
+        base: [
+          'Новым лидером становится тот, кто ещё не был лидером и не держит амулет.',
+          'Телефон и жетон лидера уходят новому лидеру, он жмёт «Я новый лидер».',
+        ],
+      },
       council: {
         base: [
           'Зло провалило походы — но добро ещё может победить.',
@@ -744,7 +754,6 @@ export const messages: Record<Lang, Messages> = {
     questTagline: 'A companion for the Quest board game',
     questPlayersCount: 'Players',
     questSides: { good: 'Good', evil: 'Evil' },
-    questYouthOrTroublemaker: 'Youth or Troublemaker',
     questHiddenNote: 'One more card than players: put one Good role face down under the tableau.',
     questCards: 'Cards in the lineup: {n} of {m}',
     questWarnings: {
@@ -762,7 +771,8 @@ export const messages: Record<Lang, Messages> = {
     questStopNight: 'Stop',
     questNumber: 'Quest {n}',
     questTokensHint: 'Hand out the team tokens and the magic token.',
-    questTeamSize: 'Team size — see the tableau.',
+    questTeamSize: 'Team size: {n}.',
+    questTeamSizeEither: 'Team size: {a} or {b}, depending on your tableau.',
     questDoubleFail: 'This quest needs 2 fails',
     questFailsPrompt: 'How many Fail cards?',
     questFailsMore: '3+',
@@ -773,12 +783,16 @@ export const messages: Record<Lang, Messages> = {
     questToFinale: 'To the finale',
     questToCouncil: 'To the council',
     questHandoffTitle: 'Passing leadership',
-    questHandoffRules: [
-      'If the tableau shows an amulet for this quest, the leader gives it to a player who has no amulet yet. Not to themselves.',
-      'The amulet holder picks another player and secretly checks their loyalty.',
-      'The new leader is a player who has not led yet (not a veteran) and holds no amulet.',
-      'Give the new leader the leader token and the phone.',
-    ],
+    questHandoffRules: {
+      amulet: [
+        'An amulet comes after this quest. The leader gives it to a player who has no amulet yet. Not to themselves.',
+        'The amulet holder picks another player and secretly checks their loyalty.',
+      ],
+      leader: [
+        'The new leader is a player who has not led yet (not a veteran) and holds no amulet.',
+        'Give the new leader the leader token and the phone.',
+      ],
+    },
     questNewLeader: 'I’m the new leader',
     questFinaleTitles: {
       goodQuests: 'Good triumphs',
@@ -840,20 +854,22 @@ export const messages: Record<Lang, Messages> = {
         'At night the phone plays signals with pauses: open and close your eyes on them. Fanfare — everyone opens their eyes.',
       ],
       quest: [
-        'The leader reads the quest setup and picks the team — for its size, see the tableau.',
+        'The leader reads the quest setup and picks the team — its size is on the quest screen.',
         'The leader hands out the team tokens and the magic token. The team plays cards in secret, the leader shuffles and reveals them.',
-        'If the tableau says this quest needs 2 fails, turn the switch on. Then enter the number of Fail cards.',
+        'Where the tableau needs 2 fails, the switch turns on by itself — the table may turn it off. Then enter the number of Fail cards.',
       ],
       outcome: [
         'The leader reads the outcome aloud.',
         'Wrong number of fails — “Undo” goes back to the same quest.',
         'Next is “Pass leadership”, or the finale or the council if the game is decided.',
       ],
-      handoff: [
-        'If the tableau shows an amulet for this quest, it is given out, and its holder secretly checks another player’s side.',
-        'The new leader is someone who has not led yet and holds no amulet.',
-        'The phone and the leader token go to the new leader, who taps “I’m the new leader”.',
-      ],
+      handoff: {
+        amulet: 'An amulet is given out after this quest, and its holder secretly checks another player’s side.',
+        base: [
+          'The new leader is someone who has not led yet and holds no amulet.',
+          'The phone and the leader token go to the new leader, who taps “I’m the new leader”.',
+        ],
+      },
       council: {
         base: [
           'Evil has failed the quests — but Good can still win.',

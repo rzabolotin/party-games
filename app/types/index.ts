@@ -208,10 +208,8 @@ export type QuestLineup = Record<QuestRoleId, number>
 
 /** Настройка Quest — ровно в таком виде лежит в `koster.quest.setup`. */
 export interface QuestSetup {
-  /** 4…10, по умолчанию 5. */
+  /** 4…12, по умолчанию 5. */
   players: number
-  /** Ячейка «1 of either» таблицы при 6+ игроках, по умолчанию Юнец. */
-  youthOrTroublemaker: 'youth' | 'troublemaker'
   /** Состав, поправленный вручную; null — по таблице. */
   roles: Partial<QuestLineup> | null
 }

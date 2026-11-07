@@ -49,9 +49,10 @@ const { themes, words } = await import(new URL('../app/spy/themes.ts', import.me
 const { levels: aliasLevels, words: aliasWords } = await import(new URL('../app/alias/levels.ts', import.meta.url).href)
 const { stories: danetki } = await import(new URL('../app/danetki/stories.ts', import.meta.url).href)
 const { questRoles } = await import(new URL('../app/quest/roles.ts', import.meta.url).href)
-const { directorsCut, expectedCards, QUEST_MIN_PLAYERS, QUEST_MAX_PLAYERS } = await import(
+const { directorsCut, expectedCards, QUEST_MIN_PLAYERS, TABLE_MAX_PLAYERS } = await import(
   new URL('../app/quest/lineups.ts', import.meta.url).href
 )
+const { tableaus } = await import(new URL('../app/quest/tableau.ts', import.meta.url).href)
 const { questTexts } = await import(new URL('../app/quest/texts.ts', import.meta.url).href)
 const { nightLines } = await import(new URL('../app/quest/night.ts', import.meta.url).href)
 
@@ -352,7 +353,7 @@ for (const id of QUEST_ROLE_IDS) {
   if (!questRoleIds.has(id)) fail('роли Quest', `нет роли «${id}» в справочнике`)
 }
 
-for (let players = QUEST_MIN_PLAYERS; players <= QUEST_MAX_PLAYERS; players++) {
+for (let players = QUEST_MIN_PLAYERS; players <= TABLE_MAX_PLAYERS; players++) {
   const where = `состав Quest на ${players}`
   const row = directorsCut[players]
   if (!row) {
@@ -377,8 +378,28 @@ for (let players = QUEST_MIN_PLAYERS; players <= QUEST_MAX_PLAYERS; players++) {
 }
 for (const key of Object.keys(directorsCut)) {
   const players = Number(key)
-  if (!(players >= QUEST_MIN_PLAYERS && players <= QUEST_MAX_PLAYERS)) {
+  if (!(players >= QUEST_MIN_PLAYERS && players <= TABLE_MAX_PLAYERS)) {
     fail('составы Quest', `лишняя строка на ${key} игроков`)
+  }
+}
+
+// --- Quest: планшеты Director's Cut — походов 5 (на 4 игрока 4), отряд не больше числа игроков ---
+
+for (let players = QUEST_MIN_PLAYERS; players <= TABLE_MAX_PLAYERS; players++) {
+  const where = `планшет Quest на ${players}`
+  const quests = tableaus[players]
+  const need = players === QUEST_MIN_PLAYERS ? 4 : 5
+  if (!Array.isArray(quests)) {
+    fail(where, 'нет планшета')
+    continue
+  }
+  if (quests.length !== need) fail(where, `походов ${quests.length}, нужно ${need}`)
+  for (const [i, quest] of quests.entries()) {
+    const sizes = typeof quest.team === 'number' ? [quest.team] : quest.team
+    for (const size of sizes) {
+      if (!Number.isInteger(size) || size < 2 || size > players) fail(`${where}, поход ${i + 1}`, `отряд «${size}»`)
+    }
+    if (typeof quest.doubleFail !== 'boolean' || typeof quest.amulet !== 'boolean') fail(`${where}, поход ${i + 1}`, 'флаги не boolean')
   }
 }
 

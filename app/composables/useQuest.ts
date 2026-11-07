@@ -9,12 +9,10 @@ import {
   type QuestPhase,
   type QuestResult,
   type QuestRoleId,
-  type QuestSetup,
   type QuestState,
   type QuestTexts,
 } from '~/types'
 import {
-  EITHER_MIN_PLAYERS,
   HIDDEN_MAX_PLAYERS,
   QUEST_MAX_PLAYERS,
   QUEST_MIN_PLAYERS,
@@ -47,8 +45,8 @@ export function useQuest() {
   const quest = state
   const setup = quest.setup
 
-  /** Состав по таблице для текущего числа игроков и переключателя. */
-  const standard = computed(() => standardLineup(setup))
+  /** Состав по таблице для текущего числа игроков. */
+  const standard = computed(() => standardLineup(setup.players))
 
   /** Состав, которым будут играть: ручной, если его правили, иначе по таблице. */
   const lineup = computed<QuestLineup>(() => (setup.roles ? fill(setup.roles) : standard.value))
@@ -63,8 +61,6 @@ export function useQuest() {
 
   /** При 4–5 игроках одна роль добра лежит рубашкой вверх. */
   const hasHidden = computed(() => setup.players <= HIDDEN_MAX_PLAYERS)
-  /** Переключатель «Юнец / Смутьян» есть только там, где в таблице «1 of either». */
-  const hasEither = computed(() => setup.players >= EITHER_MIN_PLAYERS)
 
   function canChangePlayers(delta: number): boolean {
     const next = setup.players + delta
@@ -76,16 +72,6 @@ export function useQuest() {
     if (!canChangePlayers(delta)) return
     setup.players += delta
     setup.roles = null
-  }
-
-  /** Переключатель меняет местами Юнца и Смутьяна — и в таблице, и в ручном составе. */
-  function chooseYouthOrTroublemaker(choice: QuestSetup['youthOrTroublemaker']) {
-    if (setup.youthOrTroublemaker === choice) return
-    setup.youthOrTroublemaker = choice
-    if (setup.roles) {
-      const { youth = 0, troublemaker = 0 } = setup.roles
-      setup.roles = { ...setup.roles, youth: troublemaker, troublemaker: youth }
-    }
   }
 
   function canChangeRole(id: QuestRoleId, delta: number): boolean {
@@ -208,10 +194,8 @@ export function useQuest() {
     nonStandard,
     wrongCount,
     hasHidden,
-    hasEither,
     canChangePlayers,
     changePlayers,
-    chooseYouthOrTroublemaker,
     canChangeRole,
     changeRole,
     startGame,
@@ -245,7 +229,7 @@ export function clearQuest() {
 }
 
 function defaults(): QuestState {
-  return { setup: { players: 5, youthOrTroublemaker: 'youth', roles: null }, playedTales: [], game: null }
+  return { setup: { players: 5, roles: null }, playedTales: [], game: null }
 }
 
 /**
@@ -272,9 +256,6 @@ function load(): QuestState {
   const players = saved.players
   if (typeof players === 'number' && Number.isInteger(players) && players >= QUEST_MIN_PLAYERS && players <= QUEST_MAX_PLAYERS) {
     result.setup.players = players
-  }
-  if (saved.youthOrTroublemaker === 'youth' || saved.youthOrTroublemaker === 'troublemaker') {
-    result.setup.youthOrTroublemaker = saved.youthOrTroublemaker
   }
   if (isRecord(saved.roles)) {
     const roles: Partial<QuestLineup> = {}

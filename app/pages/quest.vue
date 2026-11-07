@@ -19,6 +19,7 @@ import {
 } from '~/quest/game'
 import { HIDDEN_MAX_PLAYERS } from '~/quest/lineups'
 import { questRoles } from '~/quest/roles'
+import { tableauQuest } from '~/quest/tableau'
 import { nightLines, nightSchedule } from '~/quest/night'
 import { findIntro, findTale, questTexts } from '~/quest/texts'
 import { playCouncil, playFinale, playNightSignal, playOutcome, playSignal, unlockSound } from '~/sound'
@@ -34,10 +35,8 @@ const {
   nonStandard,
   wrongCount,
   hasHidden,
-  hasEither,
   canChangePlayers,
   changePlayers,
-  chooseYouthOrTroublemaker,
   canChangeRole,
   changeRole,
   quest,
@@ -126,12 +125,41 @@ const night = computed(() =>
 /** Переключатель «нужно 2 провала» — на каждый поход заново; «Отменить» возвращает введённое. */
 const doubleFail = ref(false)
 
+/** Поход на столе по планшету; на исходе — только что сыгранный. */
+const tableau = computed(() => (game.value ? tableauQuest(game.value.players, questNumber.value) : undefined))
+
+/** Новый поход на столе (и поход после перезагрузки) — переключатель встаёт по планшету. */
+watch(
+  () => game.value?.currentTaleId,
+  () => {
+    if (game.value?.phase === 'quest') doubleFail.value = tableau.value?.doubleFail ?? false
+  },
+  { immediate: true },
+)
+
+/** Размер отряда по планшету; на 4 игрока у 3-го и 4-го походов два варианта. */
+const teamSize = computed(() => {
+  const team = tableau.value?.team
+  if (team === undefined) return ''
+  return typeof team === 'number'
+    ? t.value.questTeamSize.replace('{n}', String(team))
+    : t.value.questTeamSizeEither.replace('{a}', String(team[0])).replace('{b}', String(team[1]))
+})
+
+/** После только что сыгранного похода по планшету вручают амулет — это подсказка передачи лидерства. */
+const amuletNow = computed(() =>
+  game.value?.phase === 'handoff' ? (tableauQuest(game.value.players, game.value.quests.length)?.amulet ?? false) : false,
+)
+const handoffRules = computed(() => [
+  ...(amuletNow.value ? t.value.questHandoffRules.amulet : []),
+  ...t.value.questHandoffRules.leader,
+])
+
 /** Звук разблокируется каждым тапом партии: после перезагрузки первым может оказаться любой. */
 function toQuest() {
   if (!texts.value) return
   unlockSound()
   nextQuest(texts.value)
-  doubleFail.value = false
 }
 
 function cancel() {
@@ -323,7 +351,6 @@ function playAgain() {
   if (!texts.value) return
   unlockSound()
   replay(texts.value)
-  doubleFail.value = false
 }
 
 const FAIL_OPTIONS = [0, 1, 2, 3] as const
@@ -376,9 +403,10 @@ const helpNow = computed(() => {
       ]
     case 'lastChance':
       return [phases.lastChance.point, ...lastChanceRoleLines.value, phases.lastChance.result]
+    case 'handoff':
+      return [...(amuletNow.value ? [phases.handoff.amulet] : []), ...phases.handoff.base]
     case 'quest':
     case 'outcome':
-    case 'handoff':
     case 'finale':
       return phases[game.value.phase]
     default:
@@ -473,27 +501,6 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
                 </button>
               </span>
             </div>
-          </div>
-
-          <!-- «1 of either» в таблице: только при 6+ игроках -->
-          <div
-            v-if="hasEither"
-            class="segments"
-            role="radiogroup"
-            :aria-label="t.questYouthOrTroublemaker"
-          >
-            <button
-              v-for="choice in ['youth', 'troublemaker'] as const"
-              :key="choice"
-              type="button"
-              class="segment"
-              :class="{ selected: setup.youthOrTroublemaker === choice }"
-              role="radio"
-              :aria-checked="setup.youthOrTroublemaker === choice"
-              @click="chooseYouthOrTroublemaker(choice)"
-            >
-              {{ questRoles.find((role) => role.id === choice)?.title }}
-            </button>
           </div>
 
           <p v-if="hasHidden" class="note">{{ t.questHiddenNote }}</p>
@@ -622,7 +629,7 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
               <li v-if="helpShowsQuest" class="help-number">{{ t.questNumber.replace('{n}', String(questNumber)) }}</li>
               <li>{{ helpScore }}</li>
               <li v-if="helpDoubleFail">{{ t.questHelpDoubleFail }}</li>
-              <li v-if="helpShowsQuest">{{ t.questTeamSize }}</li>
+              <li v-if="helpShowsQuest && teamSize">{{ teamSize }}</li>
             </ul>
           </section>
 
@@ -691,7 +698,7 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
             <p class="reading">{{ tale.setup }}</p>
             <ul class="hints">
               <li>{{ t.questTokensHint }}</li>
-              <li>{{ t.questTeamSize }}</li>
+              <li v-if="teamSize">{{ teamSize }}</li>
             </ul>
           </template>
         </div>
@@ -727,7 +734,7 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
         <div class="body">
           <h2 class="tale-title">{{ t.questHandoffTitle }}</h2>
           <ul class="rules">
-            <li v-for="rule in t.questHandoffRules" :key="rule">{{ rule }}</li>
+            <li v-for="rule in handoffRules" :key="rule">{{ rule }}</li>
           </ul>
         </div>
         <footer class="bottom">
@@ -908,40 +915,6 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
 .plain {
   border-radius: 14px;
   background: var(--surface);
-}
-
-.segments {
-  display: flex;
-  gap: 4px;
-  margin-top: 8px;
-  padding: 4px;
-  border-radius: 14px;
-  background: var(--surface);
-}
-
-.segment {
-  flex: 1;
-  min-width: 0;
-  min-height: 52px;
-  padding: 8px 4px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--fg);
-  font: inherit;
-  font-size: 18px;
-  font-weight: 600;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.segment:active {
-  background: var(--surface-active);
-}
-
-.segment.selected {
-  background: var(--accent);
-  color: var(--bg);
 }
 
 .note {
