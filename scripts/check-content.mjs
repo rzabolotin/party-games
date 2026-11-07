@@ -52,6 +52,7 @@ const { directorsCut, expectedCards, QUEST_MIN_PLAYERS, QUEST_MAX_PLAYERS } = aw
   new URL('../app/quest/lineups.ts', import.meta.url).href
 )
 const { questTexts } = await import(new URL('../app/quest/texts.ts', import.meta.url).href)
+const { NIGHT_HUNTER_SLOT, nightText } = await import(new URL('../app/quest/night.ts', import.meta.url).href)
 
 const problems = []
 const fail = (where, what) => problems.push(`${where}: ${what}`)
@@ -459,7 +460,12 @@ for (const [lang, texts] of Object.entries(questTexts)) {
   }
 
   text(`${at}, introHiddenLine`, texts.introHiddenLine, MAX_QUEST_TEXT)
-  text(`${at}, nightText`, texts.nightText, MAX_QUEST_TEXT)
+  // Текст про ночь проверяется в самом длинном виде — со строкой Охотника.
+  text(`${at}, nightHunterLine`, texts.nightHunterLine, MAX_QUEST_TEXT)
+  if (typeof texts.nightText === 'string' && texts.nightText.split(` ${NIGHT_HUNTER_SLOT}`).length !== 2) {
+    fail(`${at}, nightText`, `«${NIGHT_HUNTER_SLOT}» (с пробелом перед ним) должен встречаться ровно один раз`)
+  }
+  text(`${at}, nightText со строкой Охотника`, typeof texts.nightText === 'string' ? nightText(texts, true) : texts.nightText, MAX_QUEST_TEXT)
   text(`${at}, council`, texts.council, MAX_QUEST_TEXT)
 }
 

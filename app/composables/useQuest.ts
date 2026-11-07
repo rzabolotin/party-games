@@ -107,6 +107,16 @@ export function useQuest() {
     quest.game = newGame(texts, lineup.value, setup.players)
   }
 
+  /** «Начать ночь» со вступления: экран гаснет, сигналы ведёт страница. */
+  function startNight() {
+    if (quest.game?.phase === 'intro') quest.game.phase = 'night'
+  }
+
+  /** «Прервать» посреди ночи: назад ко вступлению, ночь начнётся заново. */
+  function abortNight() {
+    if (quest.game?.phase === 'night') quest.game.phase = 'intro'
+  }
+
   /** Новый поход на стол: случайный несыгранный, ввод с чистого листа. */
   function nextQuest(texts: QuestTexts) {
     const game = quest.game
@@ -205,6 +215,8 @@ export function useQuest() {
     canChangeRole,
     changeRole,
     startGame,
+    startNight,
+    abortNight,
     nextQuest,
     enterFails,
     cancelOutcome,
@@ -321,7 +333,9 @@ function loadGame(raw: unknown): QuestGame | null {
     savedFinale = { kind: kind as QuestFinaleKind, variant: finale.variant }
   } else if (finale !== null) return null
 
-  const game: QuestGame = { roles, players, introId, phase: phase as QuestPhase, quests, currentTaleId: current, finale: savedFinale }
+  // Ночь посреди не продолжается: сигналы шли бы не с начала. После перезагрузки — снова вступление.
+  const savedPhase = phase === 'night' ? 'intro' : (phase as QuestPhase)
+  const game: QuestGame = { roles, players, introId, phase: savedPhase, quests, currentTaleId: current, finale: savedFinale }
   // Фаза должна сходиться с тем, что лежит рядом: иначе экрану нечего показать.
   if (['quest', 'outcome', 'handoff'].includes(game.phase) && current === null) return null
   if (game.phase === 'outcome' && quests.at(-1)?.taleId !== current) return null

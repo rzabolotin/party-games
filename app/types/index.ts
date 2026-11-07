@@ -252,8 +252,10 @@ export interface QuestTexts {
   introRoleLines: Partial<Record<QuestRoleId, string>>
   /** Про роль рубашкой вверх, при 4–5 игроках. */
   introHiddenLine: string
-  /** Объяснение ночных сигналов. */
+  /** Объяснение ночных сигналов; `{hunter}` — место для `nightHunterLine`. */
   nightText: string
+  /** Шаг с пальцем Охотника — подставляется в `nightText` только при 4–5 игроках с Охотником в составе. */
+  nightHunterLine: string
   council: string
   /** По 2 варианта на вид. */
   finales: Record<QuestFinaleKind, string[]>

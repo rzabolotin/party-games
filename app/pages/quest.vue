@@ -17,8 +17,9 @@ import {
 } from '~/quest/game'
 import { HIDDEN_MAX_PLAYERS } from '~/quest/lineups'
 import { questRoles } from '~/quest/roles'
+import { NIGHT_END_MS, NIGHT_SCHEDULE, hasHunterStep, nightText } from '~/quest/night'
 import { findIntro, findTale, questTexts } from '~/quest/texts'
-import { playCouncil, playFinale, playOutcome, playSignal, unlockSound } from '~/sound'
+import { playCouncil, playFinale, playNightSignal, playOutcome, playSignal, unlockSound } from '~/sound'
 import type { QuestRoleId } from '~/types'
 
 const t = useMessages()
@@ -39,6 +40,8 @@ const {
   changeRole,
   quest,
   startGame,
+  startNight,
+  abortNight,
   nextQuest,
   enterFails,
   cancelOutcome,
@@ -56,7 +59,8 @@ const available = computed(() => texts.value !== undefined)
 
 // --- Стейт-машина ---
 // setup → game; resume → game | setup. Внутри game — фазы партии из `koster.quest.game`:
-// intro ─Дальше─▶ quest ─ввод─▶ outcome ─Отменить─▶ quest
+// intro ─Начать ночь─▶ night ─(сигналы, конец)─▶ quest ─ввод─▶ outcome ─Отменить─▶ quest
+// night ─Прервать, уход со страницы или перезагрузка─▶ intro
 // outcome ─Передать лидерство─▶ handoff ─Я новый лидер─▶ quest
 // outcome ─3 успеха─▶ finale(goodQuests); outcome ─порог провалов─▶ council
 // council ─Охота─▶ (ввод «угадал / нет») ─▶ finale(huntWon | huntLost)
@@ -106,6 +110,11 @@ const finaleText = computed(() => {
 const finaleLines = computed(() => (game.value && texts.value ? finaleRoleLines(texts.value, game.value.roles) : []))
 const finaleSide = computed(() => (game.value?.finale ? FINALE_WINNER[game.value.finale.kind] : 'good'))
 
+/** Текст про ночь по составу партии: шаг с пальцем Охотника — только при 4–5 игроках с Охотником. */
+const night = computed(() =>
+  game.value && texts.value ? nightText(texts.value, hasHunterStep(game.value.players, game.value.roles)) : '',
+)
+
 /** Переключатель «нужно 2 провала» — на каждый поход заново; «Отменить» возвращает введённое. */
 const doubleFail = ref(false)
 
@@ -135,6 +144,74 @@ function proceed() {
   if (game.value?.phase === 'council') playCouncil()
   else if (game.value?.phase === 'finale') playFinale(finaleSide.value === 'good')
 }
+
+// --- Ночь ---
+
+/**
+ * Ночь ведёт страница: время считается от нажатия по `Date.now()`, а не накоплением тиков —
+ * в фоне браузер притормаживает таймеры, а ночь отставать не должна. Тик звучит последним
+ * наступившим сигналом; пропущенные в фоне не играются пачкой. Живёт только на экране:
+ * сохраняется лишь фаза, а перезагрузка возвращает ко вступлению.
+ */
+let nightTicker: ReturnType<typeof setInterval> | null = null
+let nightStartedAt = 0
+/** Сколько сигналов расписания уже наступило. */
+let nightPlayed = 0
+
+function beginNight() {
+  unlockSound()
+  startNight()
+  nightStartedAt = Date.now()
+  nightPlayed = 0
+  stopNightTicker()
+  nightTicker = setInterval(nightTick, 200)
+}
+
+function nightTick() {
+  if (nightTicker === null) return
+  if (game.value?.phase !== 'night') {
+    stopNightTicker()
+    return
+  }
+  const elapsed = Date.now() - nightStartedAt
+  // Конец — только после фанфар: без них никто не узнает, что пора открывать глаза.
+  if (elapsed >= NIGHT_END_MS && nightPlayed === NIGHT_SCHEDULE.length) {
+    stopNightTicker()
+    toQuest()
+    return
+  }
+  let due = nightPlayed
+  while (due < NIGHT_SCHEDULE.length && NIGHT_SCHEDULE[due]!.at <= elapsed) due++
+  if (due > nightPlayed) {
+    nightPlayed = due
+    const step = NIGHT_SCHEDULE[due - 1]!
+    playNightSignal(step.signal)
+    // Фанфары опоздали (вкладка спала дольше конца ночи) — отсчёт сдвигается, чтобы им дали отзвучать.
+    if (due === NIGHT_SCHEDULE.length && elapsed > step.at) nightStartedAt = Date.now() - step.at
+  }
+}
+
+function stopNightTicker() {
+  if (nightTicker !== null) clearInterval(nightTicker)
+  nightTicker = null
+}
+
+function stopNight() {
+  stopNightTicker()
+  abortNight()
+}
+
+/** Вернулись из фона — сразу догнать расписание, не дожидаясь притормозившего тика. */
+function onNightVisibility() {
+  if (document.visibilityState === 'visible') nightTick()
+}
+
+onMounted(() => document.addEventListener('visibilitychange', onNightVisibility))
+/** Ушли со страницы посреди ночи — она прерывается, как по кнопке. */
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onNightVisibility)
+  if (nightTicker !== null) stopNight()
+})
 
 function resume() {
   unlockSound()
@@ -421,14 +498,19 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
         <h1 class="title">{{ t.quest }}</h1>
       </header>
 
-      <!-- Вступление; ночь пока пропускается кнопкой «Дальше» -->
+      <!-- Вступление, за ним текст про ночь; ночью поверх — чёрный экран с маленькой «Прервать» -->
       <template v-if="game.phase === 'intro' || game.phase === 'night'">
         <div class="body">
           <p class="reading">{{ intro?.text }}</p>
+          <h2 class="tale-title">{{ t.questNightTitle }}</h2>
+          <p class="reading">{{ night }}</p>
         </div>
         <footer class="bottom">
-          <button type="button" class="action primary" @click="toQuest">{{ t.questNext }}</button>
+          <button type="button" class="action primary" @click="beginNight">{{ t.questStartNight }}</button>
         </footer>
+        <div v-if="game.phase === 'night'" class="night">
+          <button type="button" class="night-stop" @click="stopNight">{{ t.questStopNight }}</button>
+        </div>
       </template>
 
       <!-- Поход и его исход: общий номер и счёт кружками, ниже завязка с вводом или исход -->
@@ -1126,6 +1208,32 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
   flex: none;
   min-height: 48px;
   font-size: 18px;
+}
+
+/* --- Ночь: чёрный экран поверх всего, ничего не подсвечивает --- */
+
+.night {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+}
+
+/* Тусклая, но достаточная для пальца: в углу, чтобы не нажать случайно. */
+.night-stop {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #222;
+  border-radius: 12px;
+  background: transparent;
+  color: #444;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
 @media (prefers-reduced-motion: reduce) {

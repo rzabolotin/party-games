@@ -187,8 +187,11 @@ export interface Messages {
   questResumeTitle: string
   questResume: string
   questNewGame: string
-  /** Переход со вступления к первому походу, пока ночи нет. */
-  questNext: string
+  /** Подзаголовок текста про ночь на экране вступления. */
+  questNightTitle: string
+  questStartNight: string
+  /** Маленькая кнопка в углу чёрного экрана ночи. */
+  questStopNight: string
   /** {n} — номер похода. */
   questNumber: string
   questTokensHint: string
@@ -431,7 +434,9 @@ export const messages: Record<Lang, Messages> = {
     questResumeTitle: 'Продолжить партию?',
     questResume: 'Продолжить',
     questNewGame: 'Новая партия',
-    questNext: 'Дальше',
+    questNightTitle: 'Ночь',
+    questStartNight: 'Начать ночь',
+    questStopNight: 'Прервать',
     questNumber: 'Поход {n}',
     questTokensHint: 'Раздай жетоны отряда и жетон магии.',
     questTeamSize: 'Размер отряда — смотри планшет.',
@@ -685,7 +690,9 @@ export const messages: Record<Lang, Messages> = {
     questResumeTitle: 'Continue the game?',
     questResume: 'Continue',
     questNewGame: 'New game',
-    questNext: 'Next',
+    questNightTitle: 'Night',
+    questStartNight: 'Start the night',
+    questStopNight: 'Stop',
     questNumber: 'Quest {n}',
     questTokensHint: 'Hand out the team tokens and the magic token.',
     questTeamSize: 'Team size — see the tableau.',
