@@ -314,12 +314,18 @@ const lastChanceRoleLines = computed(() => {
  */
 const revealerAtCouncil = computed(() => (game.value?.roles.revealer ?? 0) > 0 && evilSlots.value >= 3)
 
+/** Кого Охотник обязан назвать: Клирика, а если Артур в составе — Клирика или Артура. */
+const huntTarget = computed(() =>
+  (game.value?.roles.arthur ?? 0) > 0 ? t.value.questHuntRules.targetArthur : t.value.questHuntRules.target,
+)
+
 /** Правила Охоты для этой партии: про карту рубашкой вверх и про герцогов — только если это про нас. */
 const huntRules = computed(() => {
   const rules = t.value.questHuntRules
   const roles = game.value?.roles
   return [
-    ...rules.base,
+    rules.base,
+    huntTarget.value,
     ...(hiddenCard.value ? [rules.hidden] : []),
     ...(roles && (roles.duke > 0 || roles.archduke > 0) ? [rules.dukes] : []),
     rules.verdict,
@@ -395,7 +401,7 @@ const helpNow = computed(() => {
   const phases = t.value.questHelpPhases
   switch (game.value?.phase) {
     case 'council':
-      if (hunting.value) return phases.hunt
+      if (hunting.value) return [phases.hunt.reveal, huntTarget.value, phases.hunt.result]
       return [
         ...(revealerAtCouncil.value ? [phases.council.revealer] : []),
         ...phases.council.base,

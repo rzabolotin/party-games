@@ -221,8 +221,11 @@ export interface Messages {
   questHunt: string
   questToLastChance: string
   questHuntTitle: string
-  /** Правила Охоты: `base` — всегда, `hidden` — при 4–5 игроках, `dukes` — если в составе Герцог или Эрцгерцог. */
-  questHuntRules: { base: string[]; hidden: string; dukes: string; verdict: string }
+  /**
+   * Правила Охоты: `base` — всегда; `target` — кого обязательно назвать, `targetArthur` вместо него, если Артур в составе;
+   * `hidden` — при 4–5 игроках, `dukes` — если в составе Герцог или Эрцгерцог.
+   */
+  questHuntRules: { base: string; target: string; targetArthur: string; hidden: string; dukes: string; verdict: string }
   questHuntQuestion: string
   questHuntAnswers: Record<'yes' | 'no', string>
   /** Охоту объявили по ошибке — назад к совету. */
@@ -252,10 +255,11 @@ export interface Messages {
    * Что делать на каждой фазе — по пункту на строку. Ночью справка недоступна (экран чёрный),
    * поэтому ночь описана во вступлении. В совете `revealer` (первой строкой) — только если Разоблачённый
    * в составе, `hunter` — только если Охотник в составе,
-   * а объявленной Охоте вместо совета — `hunt`;
+   * а объявленной Охоте вместо совета — `hunt`, между `reveal` и `result` — кого обязательно назвать;
    * в Последнем шансе между `point` и `result` встают строки `questLastChanceRules.roles` ролей состава.
    */
-  questHelpPhases: Record<'intro' | 'quest' | 'outcome' | 'hunt' | 'finale', string[]> & {
+  questHelpPhases: Record<'intro' | 'quest' | 'outcome' | 'finale', string[]> & {
+    hunt: { reveal: string; result: string }
     /** `amulet` — первой строкой, только после похода с амулетом на планшете. */
     handoff: { amulet: string; base: string[] }
     council: { base: string[]; hunter: string; revealer: string }
@@ -499,10 +503,9 @@ export const messages: Record<Lang, Messages> = {
     questToLastChance: 'К Последнему шансу',
     questHuntTitle: 'Охота',
     questHuntRules: {
-      base: [
-        'Охотник открывает свою карту и называет двух добрых игроков по их ролям.',
-        'Одним из двух обязательно должен быть Клирик.',
-      ],
+      base: 'Охотник открывает свою карту и называет двух добрых игроков по их ролям.',
+      target: 'Одним из двух обязательно должен быть Клирик.',
+      targetArthur: 'Одним из двух обязательно должен быть Клирик или король Артур.',
       hidden: 'Можно назвать и карту, что лежит рубашкой вверх под планшетом.',
       dukes: 'Герцог и Эрцгерцог в Охоте считаются Верными слугами.',
       verdict: 'Угадал обе роли — побеждает зло, ошибся хотя бы в одной — добро.',
@@ -569,10 +572,10 @@ export const messages: Record<Lang, Messages> = {
         hunter: 'Слепой Охотник может в любой момент открыться и объявить Охоту — тогда «Охотник объявил Охоту».',
         revealer: 'Разоблачённый сразу открывает свою сторону.',
       },
-      hunt: [
-        'Охотник открыл карту и называет двух добрых игроков по ролям — одним из них должен быть Клирик.',
-        'Отметь, угадал ли Охотник обе роли. Охоту объявили по ошибке — «Охоты не было».',
-      ],
+      hunt: {
+        reveal: 'Охотник открыл карту и называет двух добрых игроков по ролям.',
+        result: 'Отметь, угадал ли Охотник обе роли. Охоту объявили по ошибке — «Охоты не было».',
+      },
       lastChance: {
         point: 'Все одновременно указывают на двух игроков, которых считают злодеями. Злодеи опускают руки.',
         result: 'Отметь итог одной из трёх кнопок.',
@@ -809,10 +812,9 @@ export const messages: Record<Lang, Messages> = {
     questToLastChance: 'To the Last Chance',
     questHuntTitle: 'The Hunt',
     questHuntRules: {
-      base: [
-        'The Hunter reveals their card and names two Good players by their roles.',
-        'One of the two must be the Cleric.',
-      ],
+      base: 'The Hunter reveals their card and names two Good players by their roles.',
+      target: 'One of the two must be the Cleric.',
+      targetArthur: 'One of the two must be the Cleric or King Arthur.',
       hidden: 'The face-down card under the tableau may be named too.',
       dukes: 'The Duke and the Archduke count as Loyal Servants in the Hunt.',
       verdict: 'Both right — Evil wins; any miss — Good wins.',
@@ -879,10 +881,10 @@ export const messages: Record<Lang, Messages> = {
         hunter: 'The Blind Hunter may reveal at any time and start the Hunt — then “The Hunter called the Hunt”.',
         revealer: 'The Revealer reveals their side right away.',
       },
-      hunt: [
-        'The Hunter has revealed and names two Good players by role — one of them must be the Cleric.',
-        'Mark whether the Hunter named both roles right. Hunt called by mistake — “No Hunt after all”.',
-      ],
+      hunt: {
+        reveal: 'The Hunter has revealed and names two Good players by role.',
+        result: 'Mark whether the Hunter named both roles right. Hunt called by mistake — “No Hunt after all”.',
+      },
       lastChance: {
         point: 'Everyone points at the same time at two players they think are Evil. Evil players lower their hands.',
         result: 'Mark the result with one of the three buttons.',
