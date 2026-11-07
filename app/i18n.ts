@@ -172,8 +172,6 @@ export interface Messages {
   questTagline: string
   questPlayersCount: string
   questSides: Record<'good' | 'evil', string>
-  /** Заголовок группы ролей, которых нет в таблице Director's Cut. */
-  questAlternatives: string
   questYouthOrTroublemaker: string
   /** Пометка при 4–5 игроках. */
   questHiddenNote: string
@@ -231,7 +229,7 @@ export interface Messages {
   /** Подсказка Последнего шанса; строки `roles` — только для ролей из состава. */
   questLastChanceRules: {
     point: string
-    roles: Record<'duke' | 'archduke' | 'duke-alt' | 'apprentice', string>
+    roles: Record<'duke' | 'archduke' | 'apprentice' | 'mutineer', string>
     verdict: string
     veterans: string
   }
@@ -250,12 +248,13 @@ export interface Messages {
   questHelpNow: string
   /**
    * Что делать на каждой фазе — по пункту на строку. Ночью справка недоступна (экран чёрный),
-   * поэтому ночь описана во вступлении. В совете `hunter` — только если Охотник в составе,
+   * поэтому ночь описана во вступлении. В совете `revealer` (первой строкой) — только если Разоблачённый
+   * в составе, `hunter` — только если Охотник в составе,
    * а объявленной Охоте вместо совета — `hunt`;
    * в Последнем шансе между `point` и `result` встают строки `questLastChanceRules.roles` ролей состава.
    */
   questHelpPhases: Record<'intro' | 'quest' | 'outcome' | 'handoff' | 'hunt' | 'finale', string[]> & {
-    council: { base: string[]; hunter: string }
+    council: { base: string[]; hunter: string; revealer: string }
     lastChance: { point: string; result: string }
   }
 }
@@ -441,7 +440,6 @@ export const messages: Record<Lang, Messages> = {
     questTagline: 'Помощник для настольной игры Quest',
     questPlayersCount: 'Игроков',
     questSides: { good: 'Добро', evil: 'Зло' },
-    questAlternatives: 'Альтернативные роли автора',
     questYouthOrTroublemaker: 'Юнец или Смутьян',
     questHiddenNote: 'Карт на одну больше, чем игроков: одну роль добра положите рубашкой вверх под планшет.',
     questCards: 'Карт в составе: {n} из {m}',
@@ -510,8 +508,9 @@ export const messages: Record<Lang, Messages> = {
       roles: {
         duke: 'Герцог может отменить один голос — опустить чью-то руку.',
         archduke: 'Эрцгерцог может изменить один голос — перевести чью-то руку на другого игрока.',
-        'duke-alt': 'Герцог (вариант автора) указывает одной рукой; если злодей остался неназванным, может поднять вторую.',
-        apprentice: 'Ученик указывает одной рукой и может опустить её, если она указывает на доброго.',
+        apprentice: 'Ученик указывает одной рукой; когда злодеи опустили руки, может поднять вторую.',
+        mutineer:
+          'Мятежник может перейти к добру: тогда он указывает руками как добрый и руки не опускает, а добро на него указывать не должно.',
       },
       verdict: 'Добрые указывают ровно на всех злодеев — победа добра, иначе победа зла.',
       veterans: 'Но если все ветераны (бывшие лидеры) оказались злыми — побеждает добро: злу нельзя вести все походы самому.',
@@ -558,6 +557,7 @@ export const messages: Record<Lang, Messages> = {
           'Время вышло или стол готов — «К Последнему шансу».',
         ],
         hunter: 'Слепой Охотник может в любой момент открыться и объявить Охоту — тогда «Охотник объявил Охоту».',
+        revealer: 'Разоблачённый сразу открывает свою сторону.',
       },
       hunt: [
         'Охотник открыл карту и называет двух добрых игроков по ролям — одним из них должен быть Клирик.',
@@ -744,7 +744,6 @@ export const messages: Record<Lang, Messages> = {
     questTagline: 'A companion for the Quest board game',
     questPlayersCount: 'Players',
     questSides: { good: 'Good', evil: 'Evil' },
-    questAlternatives: 'Designer’s alternative roles',
     questYouthOrTroublemaker: 'Youth or Troublemaker',
     questHiddenNote: 'One more card than players: put one Good role face down under the tableau.',
     questCards: 'Cards in the lineup: {n} of {m}',
@@ -813,8 +812,9 @@ export const messages: Record<Lang, Messages> = {
       roles: {
         duke: 'The Duke may void one vote — lower someone’s hand.',
         archduke: 'The Archduke may change one vote — move someone’s hand to another player.',
-        'duke-alt': 'The Duke (designer’s version) points with one hand; if an Evil player is missed, may raise the other.',
-        apprentice: 'The Apprentice points with one hand and may lower it if it points at a Good player.',
+        apprentice: 'The Apprentice points with one hand; once Evil has dropped their hands, may raise the other.',
+        mutineer:
+          'The Mutineer may switch to Good: then points like a Good player and keeps their hands up, and Good must not point at them.',
       },
       verdict: 'If Good points at exactly all the Evil players, Good wins; otherwise Evil wins.',
       veterans: 'But if all Veterans (former Leaders) turn out to be Evil, Good wins: Evil may not lead every quest.',
@@ -861,6 +861,7 @@ export const messages: Record<Lang, Messages> = {
           'Time is up or the table is ready — “To the Last Chance”.',
         ],
         hunter: 'The Blind Hunter may reveal at any time and start the Hunt — then “The Hunter called the Hunt”.',
+        revealer: 'The Revealer reveals their side right away.',
       },
       hunt: [
         'The Hunter has revealed and names two Good players by role — one of them must be the Cleric.',

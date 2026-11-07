@@ -300,9 +300,10 @@ function loadGame(raw: unknown): QuestGame | null {
   const intros = new Set(Object.values(questTexts).flatMap((texts) => texts.intros.map((intro) => intro.id)))
   const isCount = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0
 
+  // Роли, которых не было в справочнике при сохранении, — 0; удалённые (`duke-alt`) просто отбрасываются.
   const roles = {} as QuestLineup
   for (const id of QUEST_ROLE_IDS) {
-    const count = raw.roles[id]
+    const count = raw.roles[id] ?? 0
     if (!isCount(count)) return null
     roles[id] = count
   }

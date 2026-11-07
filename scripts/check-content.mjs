@@ -40,6 +40,7 @@ const {
   QUEST_SIDES,
   QUEST_BRIDGE_KINDS,
   QUEST_FINALE_KINDS,
+  QUEST_NIGHT_OUTSIDERS,
 } = await import(
   new URL('../app/types/index.ts', import.meta.url).href
 )
@@ -52,7 +53,7 @@ const { directorsCut, expectedCards, QUEST_MIN_PLAYERS, QUEST_MAX_PLAYERS } = aw
   new URL('../app/quest/lineups.ts', import.meta.url).href
 )
 const { questTexts } = await import(new URL('../app/quest/texts.ts', import.meta.url).href)
-const { NIGHT_HUNTER_SLOT, nightText } = await import(new URL('../app/quest/night.ts', import.meta.url).href)
+const { nightLines } = await import(new URL('../app/quest/night.ts', import.meta.url).href)
 
 const problems = []
 const fail = (where, what) => problems.push(`${where}: ${what}`)
@@ -331,7 +332,7 @@ if (questRoles.length !== QUEST_ROLE_IDS.length) {
 }
 
 const questRoleIds = new Set()
-/** Роли по id — для проверки таблицы: уникальность и альтернативность. */
+/** Роли по id — для проверки таблицы: уникальность. */
 const questRoleById = new Map()
 for (const role of questRoles) {
   const where = `роль Quest ${role.id ?? '(без id)'}`
@@ -370,7 +371,6 @@ for (let players = QUEST_MIN_PLAYERS; players <= QUEST_MAX_PLAYERS; players++) {
       continue
     }
     if (role.unique && count > 1) fail(where, `уникальная роль ${id} — ${count} карты`)
-    if (role.alternative && count > 0) fail(where, `альтернативная роль ${id} не из таблицы Director's Cut`)
     sum += count
   }
   if (sum !== expectedCards(players)) fail(where, `карт ${sum}, нужно ${expectedCards(players)}`)
@@ -448,25 +448,33 @@ for (const [lang, texts] of Object.entries(questTexts)) {
     if (!QUEST_FINALE_KINDS.includes(kind)) fail(`${at}, финалы`, `неизвестный вид «${kind}»`)
   }
 
-  for (const id of QUEST_ROLE_IDS) text(`${at}, вставка во вступление ${id}`, texts.introRoleLines?.[id], MAX_QUEST_TEXT)
+  for (const id of QUEST_ROLE_IDS) {
+    text(`${at}, вставка во вступление ${id}`, texts.introRoleLines?.[id], MAX_QUEST_TEXT)
+    text(`${at}, вставка в финал ${id}`, texts.finaleRoleLines?.[id], MAX_QUEST_TEXT)
+  }
   for (const [field, lines] of [
     ['introRoleLines', texts.introRoleLines],
     ['finaleRoleLines', texts.finaleRoleLines],
   ]) {
     for (const [id, line] of Object.entries(lines ?? {})) {
       if (!QUEST_ROLE_IDS.includes(id)) fail(`${at}, ${field}`, `неизвестная роль «${id}»`)
-      else if (field === 'finaleRoleLines') text(`${at}, вставка в финал ${id}`, line, MAX_QUEST_TEXT)
     }
   }
 
   text(`${at}, introHiddenLine`, texts.introHiddenLine, MAX_QUEST_TEXT)
-  // Текст про ночь проверяется в самом длинном виде — со строкой Охотника.
-  text(`${at}, nightHunterLine`, texts.nightHunterLine, MAX_QUEST_TEXT)
-  if (typeof texts.nightText === 'string' && texts.nightText.split(` ${NIGHT_HUNTER_SLOT}`).length !== 2) {
-    fail(`${at}, nightText`, `«${NIGHT_HUNTER_SLOT}» (с пробелом перед ним) должен встречаться ровно один раз`)
+  for (const field of ['start', 'evil', 'hunter', 'scion', 'arthur', 'cleric', 'trickster', 'end']) {
+    text(`${at}, ночь ${field}`, texts.night?.[field], MAX_QUEST_TEXT)
   }
-  text(`${at}, nightText со строкой Охотника`, typeof texts.nightText === 'string' ? nightText(texts, true) : texts.nightText, MAX_QUEST_TEXT)
+  for (const id of QUEST_NIGHT_OUTSIDERS) text(`${at}, ночь outsiders.${id}`, texts.night?.outsiders?.[id], MAX_QUEST_TEXT)
+  // Абзацы ночи — в самом длинном виде: все шаги и все вставки (при 4 игроках, со всеми ролями).
+  if (texts.night?.outsiders) {
+    const all = Object.fromEntries(QUEST_ROLE_IDS.map((id) => [id, 1]))
+    for (const [i, line] of nightLines(texts, QUEST_MIN_PLAYERS, all).entries()) {
+      if (length(line) > MAX_QUEST_TEXT) fail(`${at}, ночь абзац #${i + 1}`, `длина ${length(line)} > ${MAX_QUEST_TEXT}`)
+    }
+  }
   text(`${at}, council`, texts.council, MAX_QUEST_TEXT)
+  text(`${at}, councilRevealerLine`, texts.councilRevealerLine, MAX_QUEST_TEXT)
 }
 
 // --- Итог ---

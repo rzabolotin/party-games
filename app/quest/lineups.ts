@@ -10,7 +10,7 @@ export const HIDDEN_MAX_PLAYERS = 5
 
 /**
  * Таблица Director's Cut: число игроков → состав. Ячейка «1 of either» записана как Юнец,
- * Смутьяна подставляет переключатель (`standardLineup`). Альтернативных ролей автора в таблице нет.
+ * Смутьяна подставляет переключатель (`standardLineup`). Ролей из коробки (Ученик, Артур и др.) в таблице нет.
  * Источник — «Quest Director's Cut Rules Summary» (2024-09-01), лежит в `drafts/`.
  */
 export const directorsCut: Record<number, QuestLineup> = {
@@ -42,15 +42,22 @@ function row(counts: Partial<QuestLineup>): QuestLineup {
   return {
     servant: 0,
     cleric: 0,
+    arthur: 0,
     youth: 0,
     troublemaker: 0,
     duke: 0,
     archduke: 0,
-    'duke-alt': 0,
     apprentice: 0,
     minion: 0,
     morgan: 0,
     hunter: 0,
+    scion: 0,
+    brute: 0,
+    lunatic: 0,
+    revealer: 0,
+    trickster: 0,
+    mutineer: 0,
+    changeling: 0,
     ...counts,
   }
 }

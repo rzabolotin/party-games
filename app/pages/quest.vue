@@ -19,7 +19,7 @@ import {
 } from '~/quest/game'
 import { HIDDEN_MAX_PLAYERS } from '~/quest/lineups'
 import { questRoles } from '~/quest/roles'
-import { NIGHT_END_MS, NIGHT_SCHEDULE, hasHunterStep, nightText } from '~/quest/night'
+import { nightLines, nightSchedule } from '~/quest/night'
 import { findIntro, findTale, questTexts } from '~/quest/texts'
 import { playCouncil, playFinale, playNightSignal, playOutcome, playSignal, unlockSound } from '~/sound'
 import type { QuestRoleId } from '~/types'
@@ -118,9 +118,9 @@ const finaleText = computed(() => {
 const finaleLines = computed(() => (game.value && texts.value ? finaleRoleLines(texts.value, game.value.roles) : []))
 const finaleSide = computed(() => (game.value?.finale ? FINALE_WINNER[game.value.finale.kind] : 'good'))
 
-/** Текст про ночь по составу партии: шаг с пальцем Охотника — только при 4–5 игроках с Охотником. */
+/** Текст про ночь по составу партии, по абзацу на шаг: шагов и строк без своих ролей нет. */
 const night = computed(() =>
-  game.value && texts.value ? nightText(texts.value, hasHunterStep(game.value.players, game.value.roles)) : '',
+  game.value && texts.value ? nightLines(texts.value, game.value.players, game.value.roles) : [],
 )
 
 /** Переключатель «нужно 2 провала» — на каждый поход заново; «Отменить» возвращает введённое. */
@@ -183,19 +183,20 @@ function nightTick() {
   }
   const elapsed = Date.now() - nightStartedAt
   // Конец — только после фанфар: без них никто не узнает, что пора открывать глаза.
-  if (elapsed >= NIGHT_END_MS && nightPlayed === NIGHT_SCHEDULE.length) {
+  const { signals, end } = nightSchedule(game.value.roles)
+  if (elapsed >= end && nightPlayed === signals.length) {
     stopNightTicker()
     toQuest()
     return
   }
   let due = nightPlayed
-  while (due < NIGHT_SCHEDULE.length && NIGHT_SCHEDULE[due]!.at <= elapsed) due++
+  while (due < signals.length && signals[due]!.at <= elapsed) due++
   if (due > nightPlayed) {
     nightPlayed = due
-    const step = NIGHT_SCHEDULE[due - 1]!
+    const step = signals[due - 1]!
     playNightSignal(step.signal)
     // Фанфары опоздали (вкладка спала дольше конца ночи) — отсчёт сдвигается, чтобы им дали отзвучать.
-    if (due === NIGHT_SCHEDULE.length && elapsed > step.at) nightStartedAt = Date.now() - step.at
+    if (due === signals.length && elapsed > step.at) nightStartedAt = Date.now() - step.at
   }
 }
 
@@ -278,6 +279,12 @@ const lastChanceRoleLines = computed(() => {
   const roles = game.value?.roles
   return LAST_CHANCE_ROLES.filter((id) => (roles?.[id] ?? 0) > 0).map((id) => t.value.questLastChanceRules.roles[id])
 })
+
+/**
+ * Разоблачённый раскрывается после третьего провала — то есть в начале совета.
+ * При 4 игроках совет наступает уже после второго, и раскрываться ему не с чего.
+ */
+const revealerAtCouncil = computed(() => (game.value?.roles.revealer ?? 0) > 0 && evilSlots.value >= 3)
 
 /** Правила Охоты для этой партии: про карту рубашкой вверх и про герцогов — только если это про нас. */
 const huntRules = computed(() => {
@@ -362,7 +369,11 @@ const helpNow = computed(() => {
   switch (game.value?.phase) {
     case 'council':
       if (hunting.value) return phases.hunt
-      return [...phases.council.base, ...(game.value.roles.hunter > 0 ? [phases.council.hunter] : [])]
+      return [
+        ...(revealerAtCouncil.value ? [phases.council.revealer] : []),
+        ...phases.council.base,
+        ...(game.value.roles.hunter > 0 ? [phases.council.hunter] : []),
+      ]
     case 'lastChance':
       return [phases.lastChance.point, ...lastChanceRoleLines.value, phases.lastChance.result]
     case 'quest':
@@ -391,11 +402,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onHelpKey))
 
 // --- Экран настройки ---
 
-/** Группы состава: роли таблицы по сторонам, альтернативные роли автора — отдельно в конце. */
+/** Группы состава по сторонам: роли таблицы и роли из коробки — одним списком. */
 const groups = computed(() => [
-  { key: 'good', title: t.value.questSides.good, roles: questRoles.filter((r) => r.side === 'good' && !r.alternative) },
-  { key: 'evil', title: t.value.questSides.evil, roles: questRoles.filter((r) => r.side === 'evil' && !r.alternative) },
-  { key: 'alt', title: t.value.questAlternatives, roles: questRoles.filter((r) => r.alternative) },
+  { key: 'good', title: t.value.questSides.good, roles: questRoles.filter((r) => r.side === 'good') },
+  { key: 'evil', title: t.value.questSides.evil, roles: questRoles.filter((r) => r.side === 'evil') },
 ])
 
 /** Раскрытое описание роли; одновременно развёрнута не больше одной. */
@@ -639,9 +649,9 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
       <template v-if="game.phase === 'intro' || game.phase === 'night'">
         <div class="body">
           <p class="reading">{{ intro?.text }}</p>
-          <p v-if="introRoleLines.length > 0" class="reading">{{ introRoleLines.join(' ') }}</p>
+          <p v-for="line in introRoleLines" :key="line" class="reading">{{ line }}</p>
           <h2 class="tale-title">{{ t.questNightTitle }}</h2>
-          <p class="reading">{{ night }}</p>
+          <p v-for="line in night" :key="line" class="reading">{{ line }}</p>
         </div>
         <footer class="bottom">
           <button type="button" class="action primary" @click="beginNight">{{ t.questStartNight }}</button>
@@ -737,6 +747,7 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
           <template v-else>
             <h2 class="tale-title">{{ t.questCouncil }}</h2>
             <p class="reading">{{ texts?.council }}</p>
+            <p v-if="revealerAtCouncil" class="reading">{{ texts?.councilRevealerLine }}</p>
             <p class="note">{{ t.questCouncilHint }}</p>
           </template>
           <p
@@ -794,7 +805,7 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
             {{ game.finale ? t.questFinaleTitles[game.finale.kind] : '' }}
           </h2>
           <p class="reading">{{ finaleText }}</p>
-          <p v-if="finaleLines.length > 0" class="reading">{{ finaleLines.join(' ') }}</p>
+          <p v-for="line in finaleLines" :key="line" class="reading">{{ line }}</p>
         </div>
         <footer class="bottom">
           <button type="button" class="action secondary" @click="toSetup">{{ t.questToSetup }}</button>

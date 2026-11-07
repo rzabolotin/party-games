@@ -196,8 +196,53 @@ function brass(ctx: AudioContext, t0: number, duration: number, frequency: numbe
   osc.stop(t0 + duration + 0.02)
 }
 
+/** Щипок струны — арфа: треугольник с быстрой атакой и затуханием, плюс тихая октава сверху. */
+function pluck(ctx: AudioContext, t0: number, frequency: number, volume: number, decay = 1.2) {
+  for (const [ratio, level] of [
+    [1, 1],
+    [2, 0.3],
+  ] as const) {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'triangle'
+    osc.frequency.value = frequency * ratio
+    gain.gain.setValueAtTime(0, t0)
+    gain.gain.linearRampToValueAtTime(volume * level, t0 + 0.004)
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + decay)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start(t0)
+    osc.stop(t0 + decay + 0.05)
+  }
+}
+
+/** Удар гонга: низкий гул с плотными негармоничными призвуками и долгим хвостом. */
+function gong(ctx: AudioContext, t0: number, frequency: number, volume: number, decay = 4) {
+  const partials: [ratio: number, level: number][] = [
+    [1, 1],
+    [1.48, 0.6],
+    [2.12, 0.45],
+    [2.93, 0.3],
+    [3.9, 0.2],
+  ]
+  for (const [ratio, level] of partials) {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.value = frequency * ratio
+    const length = decay / ratio ** 0.3
+    gain.gain.setValueAtTime(0, t0)
+    // Гонг «раскрывается» не сразу — атака мягче, чем у колокола.
+    gain.gain.linearRampToValueAtTime(volume * level, t0 + 0.06)
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + length)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start(t0)
+    osc.stop(t0 + length + 0.05)
+  }
+}
+
 /**
  * Сигнал ночи Quest. Колокол — злодеи открывают глаза, двойной колокол — закрывают;
+ * арфа — Моргана узнаёт Отпрыска; гонг — Артур узнаёт Моргану;
  * рог — Клирик открывает, двойной рог — закрывает; фанфары — просыпаются все.
  */
 export function playNightSignal(signal: NightSignal) {
@@ -211,6 +256,21 @@ export function playNightSignal(signal: NightSignal) {
     case 'doubleBell':
       strike(ctx, t0, 392, 0.35, 1.6)
       strike(ctx, t0 + 0.5, 392, 0.35, 2.4)
+      break
+    case 'harp':
+      // Восходящее арпеджио, как перебор струн: до — ми — соль — до.
+      for (const [i, frequency] of [523, 659, 784, 1047].entries()) pluck(ctx, t0 + i * 0.12, frequency, 0.3)
+      break
+    case 'doubleHarp':
+      pluck(ctx, t0, 784, 0.3, 0.8)
+      pluck(ctx, t0 + 0.5, 784, 0.3, 1.2)
+      break
+    case 'gong':
+      gong(ctx, t0, 98, 0.3)
+      break
+    case 'doubleGong':
+      gong(ctx, t0, 98, 0.3, 1.6)
+      gong(ctx, t0 + 0.6, 98, 0.3, 2.6)
       break
     case 'horn':
       // Долгий низкий зов с подъёмом на кварту.

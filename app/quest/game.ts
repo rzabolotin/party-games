@@ -48,7 +48,7 @@ export const FINALE_WINNER: Record<QuestFinaleKind, 'good' | 'evil'> = {
 export const COUNCIL_SECONDS = 5 * 60
 
 /** Роли с вмешательством в Последний шанс — их строки подсказки показываются, только если роль в составе. */
-export const LAST_CHANCE_ROLES = ['duke', 'archduke', 'duke-alt', 'apprentice'] as const satisfies readonly QuestRoleId[]
+export const LAST_CHANCE_ROLES = ['duke', 'archduke', 'apprentice', 'mutineer'] as const satisfies readonly QuestRoleId[]
 
 /** Финал: случайный вариант текста; он сохраняется в партии, чтобы после перезагрузки звучал тот же. */
 export function finale(texts: QuestTexts, kind: QuestFinaleKind): NonNullable<QuestGame['finale']> {

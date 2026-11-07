@@ -161,20 +161,28 @@ export interface DanetkiState {
 
 /**
  * Роли Quest; порядок массива — порядок на экране состава: сначала добро, потом зло.
- * `duke-alt` и `apprentice` — альтернативные роли автора, в таблице Director's Cut их нет.
+ * Артур, Ученик и роли после Охотника — из коробки, в таблице Director's Cut их нет.
+ * `duke-alt` удалён — id не переиспользуется.
  */
 export const QUEST_ROLE_IDS = [
   'servant',
   'cleric',
+  'arthur',
   'youth',
   'troublemaker',
   'duke',
   'archduke',
-  'duke-alt',
   'apprentice',
   'minion',
   'morgan',
   'hunter',
+  'scion',
+  'brute',
+  'lunatic',
+  'revealer',
+  'trickster',
+  'mutineer',
+  'changeling',
 ] as const
 export type QuestRoleId = (typeof QUEST_ROLE_IDS)[number]
 
@@ -193,8 +201,6 @@ export interface QuestRole {
   ability: string
   /** Карта в единственном экземпляре: все, кроме слуги и приспешника. */
   unique: boolean
-  /** Альтернативная роль автора: в таблице Director's Cut её нет, добавляется вручную. */
-  alternative?: boolean
 }
 
 /** Состав роли → сколько карт. */
@@ -242,6 +248,31 @@ export const QUEST_FINALE_KINDS = [
 ] as const
 export type QuestFinaleKind = (typeof QUEST_FINALE_KINDS)[number]
 
+/** Роли, которые на колокол глаз не открывают: злых не знают, злые не знают их. */
+export const QUEST_NIGHT_OUTSIDERS = ['mutineer', 'changeling', 'scion'] as const satisfies readonly QuestRoleId[]
+
+/** Тексты ночи Quest. */
+export interface QuestNightTexts {
+  /** Экран гаснет, все закрывают глаза. */
+  start: string
+  /** Колокол: злодеи узнают друг друга. */
+  evil: string
+  /** Палец Охотника — при 4–5 игроках с Охотником в составе, в абзаце колокола. */
+  hunter: string
+  /** Кто на колокол глаз не открывает — строки ролей состава, в абзаце колокола. */
+  outsiders: Record<(typeof QUEST_NIGHT_OUTSIDERS)[number], string>
+  /** Арфа: Моргана узнаёт Отпрыска — если Отпрыск в составе. */
+  scion: string
+  /** Гонг: Артур узнаёт Моргану — если Артур в составе. */
+  arthur: string
+  /** Рог: Клирик и палец первого лидера. */
+  cleric: string
+  /** Плут-лидер может не поднять палец — если Плут в составе, в абзаце рога. */
+  trickster: string
+  /** Фанфары. */
+  end: string
+}
+
 /** Тексты Quest на одном языке. */
 export interface QuestTexts {
   tales: QuestTale[]
@@ -252,11 +283,11 @@ export interface QuestTexts {
   introRoleLines: Partial<Record<QuestRoleId, string>>
   /** Про роль рубашкой вверх, при 4–5 игроках. */
   introHiddenLine: string
-  /** Объяснение ночных сигналов; `{hunter}` — место для `nightHunterLine`. */
-  nightText: string
-  /** Шаг с пальцем Охотника — подставляется в `nightText` только при 4–5 игроках с Охотником в составе. */
-  nightHunterLine: string
+  /** Объяснение ночи по шагам: каждый шаг — отдельный абзац, шагов без своих ролей нет. */
+  night: QuestNightTexts
   council: string
+  /** Вслед за текстом совета, если Разоблачённый в составе. */
+  councilRevealerLine: string
   /** По 2 варианта на вид. */
   finales: Record<QuestFinaleKind, string[]>
   finaleRoleLines: Partial<Record<QuestRoleId, string>>
