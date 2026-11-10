@@ -658,9 +658,10 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
         </div>
       </div>
 
-      <!-- Вступление, за ним текст про ночь; ночью поверх — чёрный экран с маленькой «Прервать» -->
+      <!-- «Кто есть кто», вступление и строки ролей, за ними текст про ночь; ночью поверх — чёрный экран с маленькой «Прервать» -->
       <template v-if="game.phase === 'intro' || game.phase === 'night'">
         <div class="body">
+          <p class="reading">{{ texts?.introLore }}</p>
           <p class="reading">{{ intro?.text }}</p>
           <p v-for="line in introRoleLines" :key="line" class="reading">{{ line }}</p>
           <h2 class="tale-title">{{ t.questNightTitle }}</h2>
