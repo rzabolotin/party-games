@@ -15,9 +15,9 @@ export function isSuccess(fails: number, doubleFail: boolean): boolean {
   return fails < (doubleFail ? 2 : 1)
 }
 
-/** Текст исхода: успех; провал от одной карты; провал от двух и больше. */
+/** Текст исхода: успех; успех, несмотря на одну карту «Провал»; провал от одной карты; провал от двух и больше. */
 export function outcomeText(tale: QuestTale, result: QuestResult): string {
-  if (result.success) return tale.success
+  if (result.success) return result.fails > 0 ? tale.successNarrow : tale.success
   return result.fails >= 2 ? tale.failHeavy : tale.fail
 }
 

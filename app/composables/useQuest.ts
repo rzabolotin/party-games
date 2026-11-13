@@ -114,10 +114,10 @@ export function useQuest() {
   }
 
   /** Лидер ввёл число карт «Провал»: исход записывается в партию, счёт обновляется. */
-  function enterFails(fails: number, doubleFail: boolean) {
+  function enterFails(fails: number, doubleFail: boolean, amulet: boolean) {
     const game = quest.game
     if (!game || game.phase !== 'quest' || game.currentTaleId === null) return
-    game.quests.push({ taleId: game.currentTaleId, fails, doubleFail, success: isSuccess(fails, doubleFail) })
+    game.quests.push({ taleId: game.currentTaleId, fails, doubleFail, amulet, success: isSuccess(fails, doubleFail) })
     game.phase = 'outcome'
   }
 
@@ -298,8 +298,11 @@ function loadGame(raw: unknown): QuestGame | null {
   for (const item of raw.quests) {
     if (!isRecord(item) || typeof item.taleId !== 'number' || !tales.has(item.taleId)) return null
     if (!isCount(item.fails) || typeof item.doubleFail !== 'boolean') return null
+    // Сохранения до галочки амулета её не знают — там амулета в тексте не было.
+    if (item.amulet !== undefined && typeof item.amulet !== 'boolean') return null
+    const amulet = item.amulet === true
     // Исход пересчитывается по правилу, а не берётся на веру.
-    quests.push({ taleId: item.taleId, fails: item.fails, doubleFail: item.doubleFail, success: isSuccess(item.fails, item.doubleFail) })
+    quests.push({ taleId: item.taleId, fails: item.fails, doubleFail: item.doubleFail, amulet, success: isSuccess(item.fails, item.doubleFail) })
   }
 
   let current: number | null = null

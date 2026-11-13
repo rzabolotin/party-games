@@ -221,10 +221,14 @@ export interface QuestTale {
   setup: string
   /** Поход удался. */
   success: string
+  /** Поход удался при «нужно 2 провала» и одной карте «Провал»: кто-то вредил, но не вышло. */
+  successNarrow: string
   /** Провал от одной карты «Провал». */
   fail: string
   /** Провал от двух карт и больше. */
   failHeavy: string
+  /** Как отряду достался амулет — отдельный абзац после любого исхода, если на походе вручают амулет. */
+  amulet: string
 }
 
 /** Связки по счёту; `decisive` — обе стороны в шаге от победы. */
@@ -301,6 +305,8 @@ export interface QuestResult {
   taleId: number
   fails: number
   doubleFail: boolean
+  /** После похода вручают амулет. */
+  amulet: boolean
   success: boolean
 }
 

@@ -124,6 +124,8 @@ const night = computed(() =>
 
 /** Переключатель «нужно 2 провала» — на каждый поход заново; «Отменить» возвращает введённое. */
 const doubleFail = ref(false)
+/** Галочка «после похода вручают амулет» — так же, как «нужно 2 провала». */
+const amulet = ref(false)
 
 /** Поход на столе по планшету; на исходе — только что сыгранный. */
 const tableau = computed(() => (game.value ? tableauQuest(game.value.players, questNumber.value) : undefined))
@@ -132,7 +134,9 @@ const tableau = computed(() => (game.value ? tableauQuest(game.value.players, qu
 watch(
   () => game.value?.currentTaleId,
   () => {
-    if (game.value?.phase === 'quest') doubleFail.value = tableau.value?.doubleFail ?? false
+    if (game.value?.phase !== 'quest') return
+    doubleFail.value = tableau.value?.doubleFail ?? false
+    amulet.value = tableau.value?.amulet ?? false
   },
   { immediate: true },
 )
@@ -146,10 +150,8 @@ const teamSize = computed(() => {
     : t.value.questTeamSizeEither.replace('{a}', String(team[0])).replace('{b}', String(team[1]))
 })
 
-/** После только что сыгранного похода по планшету вручают амулет — это подсказка передачи лидерства. */
-const amuletNow = computed(() =>
-  game.value?.phase === 'handoff' ? (tableauQuest(game.value.players, game.value.quests.length)?.amulet ?? false) : false,
-)
+/** После только что сыгранного похода вручают амулет (галочка на вводе) — это подсказка передачи лидерства. */
+const amuletNow = computed(() => (game.value?.phase === 'handoff' ? (game.value.quests.at(-1)?.amulet ?? false) : false))
 const handoffRules = computed(() => [
   ...(amuletNow.value ? t.value.questHandoffRules.amulet : []),
   ...t.value.questHandoffRules.leader,
@@ -164,12 +166,13 @@ function toQuest() {
 
 function cancel() {
   doubleFail.value = result.value?.doubleFail ?? false
+  amulet.value = result.value?.amulet ?? false
   cancelOutcome()
 }
 
 function enter(fails: number) {
   unlockSound()
-  enterFails(fails, doubleFail.value)
+  enterFails(fails, doubleFail.value, amulet.value)
   if (result.value) playOutcome(result.value.success)
 }
 
@@ -698,6 +701,7 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
             </p>
             <h2 class="tale-title">{{ tale.title }}</h2>
             <p class="reading">{{ outcomeText(tale, result) }}</p>
+            <p v-if="result.amulet" class="reading">{{ tale.amulet }}</p>
           </template>
           <template v-else>
             <p v-if="questBridge" class="bridge">{{ questBridge }}</p>
@@ -719,6 +723,10 @@ const wrongCountLabel = computed(() => t.value.questWarnings.wrongCount.replace(
           <label class="toggle">
             <input v-model="doubleFail" type="checkbox" />
             <span>{{ t.questDoubleFail }}</span>
+          </label>
+          <label class="toggle">
+            <input v-model="amulet" type="checkbox" />
+            <span>{{ t.questAmulet }}</span>
           </label>
           <p class="prompt">{{ t.questFailsPrompt }}</p>
           <div class="fails">

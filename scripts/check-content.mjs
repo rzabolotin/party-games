@@ -439,7 +439,7 @@ for (const [lang, texts] of Object.entries(questTexts)) {
   if (tales.length === 0) fail(`${at}, походы`, 'нет ни одного похода')
   withIds(`${at}, поход`, tales)
   for (const [i, tale] of tales.entries()) {
-    for (const field of ['title', 'setup', 'success', 'fail', 'failHeavy']) {
+    for (const field of ['title', 'setup', 'success', 'successNarrow', 'fail', 'failHeavy', 'amulet']) {
       text(`${at}, поход #${i + 1} ${field}`, tale?.[field], MAX_QUEST_TEXT)
     }
   }

@@ -197,6 +197,8 @@ export interface Messages {
   /** На 4 игрока два планшета, и на 3-м и 4-м походах размеры разные: {a} или {b}. */
   questTeamSizeEither: string
   questDoubleFail: string
+  /** Галочка «после похода вручают амулет» — ставится по планшету. */
+  questAmulet: string
   questFailsPrompt: string
   /** Кнопка «три и больше» в вводе провалов. */
   questFailsMore: string
@@ -208,7 +210,7 @@ export interface Messages {
   questToFinale: string
   questToCouncil: string
   questHandoffTitle: string
-  /** Подсказки передачи лидерства — по пункту на строку; `amulet` — только после похода с амулетом на планшете. */
+  /** Подсказки передачи лидерства — по пункту на строку; `amulet` — только после похода, где вручают амулет (галочка на вводе). */
   questHandoffRules: { amulet: string[]; leader: string[] }
   questNewLeader: string
   /** Заголовок над текстом финала — кто и как победил. */
@@ -260,7 +262,7 @@ export interface Messages {
    */
   questHelpPhases: Record<'intro' | 'quest' | 'outcome' | 'finale', string[]> & {
     hunt: { reveal: string; result: string }
-    /** `amulet` — первой строкой, только после похода с амулетом на планшете. */
+    /** `amulet` — первой строкой, только после похода, где вручают амулет. */
     handoff: { amulet: string; base: string[] }
     council: { base: string[]; hunter: string; revealer: string }
     lastChance: { point: string; result: string }
@@ -468,6 +470,7 @@ export const messages: Record<Lang, Messages> = {
     questTeamSize: 'Размер отряда: {n}.',
     questTeamSizeEither: 'Размер отряда: {a} или {b} — смотря какой у вас планшет.',
     questDoubleFail: 'В этом походе нужно 2 провала',
+    questAmulet: 'После похода вручают амулет',
     questFailsPrompt: 'Сколько карт «Провал»?',
     questFailsMore: '3+',
     questOutcome: { success: 'Успех', fail: 'Провал' },
@@ -777,6 +780,7 @@ export const messages: Record<Lang, Messages> = {
     questTeamSize: 'Team size: {n}.',
     questTeamSizeEither: 'Team size: {a} or {b}, depending on your tableau.',
     questDoubleFail: 'This quest needs 2 fails',
+    questAmulet: 'An amulet is handed over after this quest',
     questFailsPrompt: 'How many Fail cards?',
     questFailsMore: '3+',
     questOutcome: { success: 'Success', fail: 'Fail' },
